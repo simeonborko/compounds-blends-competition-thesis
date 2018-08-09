@@ -122,8 +122,24 @@ class LanguageTable(Table):
 
 
 class NamingUnitTable(Table):
-    _NAME = 'naming_unit_test'
-    _FIELDS = ('nu_graphic', 'first_language', 'survey_language', 'image_id', 'nu_word_class', 'nu_phonetic', 'nu_syllabic', 'nu_graphic_len', 'nu_phonetic_len', 'nu_syllabic_len', 'n_of_overlapping_letters', 'n_of_overlapping_phones', 'sw1_graphic', 'sw2_graphic', 'sw3_graphic', 'sw4_graphic', 'sw1_headmod', 'sw2_headmod', 'sw3_headmod', 'sw4_headmod', 'sw1_subdom', 'sw2_subdom', 'sw3_subdom', 'sw4_subdom', 'wf_process', 'lexsh_main', 'lexsh_sm', 'lexsh_whatm', 'split_point_1', 'split_point_2', 'split_point_3', 'G_nu_syllabic', 'G_nu_syllabic__ignore', 'G_nu_graphic_len', 'G_nu_phonetic_len', 'G_nu_syllabic_len', 'G_n_of_overlapping_letters', 'G_n_of_overlapping_phones', 'G_lexsh_main', 'G_lexsh_main__ignore', 'G_lexsh_sm', 'G_lexsh_sm__ignore', 'G_lexsh_whatm', 'G_lexsh_whatm__ignore', 'G_split_point_1', 'G_split_point_2', 'G_split_point_3')
+    _NAME = 'naming_unit'
+    _FIELDS = ('nu_graphic', 'first_language', 'survey_language', 'image_id',
+               'wf_process',
+
+               'sw1_graphic', 'sw2_graphic', 'sw3_graphic', 'sw4_graphic',
+               'sw1_headmod', 'sw2_headmod', 'sw3_headmod', 'sw4_headmod',
+               'sw1_subdom', 'sw2_subdom', 'sw3_subdom', 'sw4_subdom',
+
+               'nu_word_class', 'nu_phonetic',
+               'nu_syllabic', 'G_nu_syllabic', 'G_nu_syllabic__ignore',
+               'nu_graphic_len', 'G_nu_graphic_len',
+               'nu_phonetic_len', 'G_nu_phonetic_len',
+               'nu_syllabic_len', 'G_nu_syllabic_len',
+               'n_of_overlapping_letters', 'G_n_of_overlapping_letters',
+               'n_of_overlapping_phones', 'G_n_of_overlapping_phones',
+               'lexsh_main', 'G_lexsh_main', 'G_lexsh_main__ignore', 'lexsh_sm', 'G_lexsh_sm', 'G_lexsh_sm__ignore',
+               'lexsh_whatm', 'G_lexsh_whatm', 'G_lexsh_whatm__ignore',
+               'split_point_1', 'G_split_point_1', 'split_point_2', 'G_split_point_2', 'split_point_3', 'G_split_point_3')
     _PRIMARY = 4
 
 
@@ -140,13 +156,18 @@ class ResponseTable(Table):
 
 
 class SourceWordTable(Table):
-    _NAME = 'source_word_test'
-    _FIELDS = ('sw_graphic', 'first_language', 'survey_language', 'source_language', 'sw_phonetic', 'sw_word_class', 'sw_syllabic', 'sw_graphic_len', 'sw_phonetic_len', 'sw_syllabic_len', 'frequency_in_snc', 'G_sw_syllabic', 'G_sw_syllabic__ignore', 'G_sw_graphic_len', 'G_sw_phonetic_len', 'G_sw_syllabic_len')
+    _NAME = 'source_word'
+    _FIELDS = ('sw_graphic', 'first_language', 'survey_language',
+               'source_language', 'sw_phonetic', 'sw_word_class',
+               'sw_syllabic', 'G_sw_syllabic', 'G_sw_syllabic__ignore',
+               'sw_graphic_len', 'G_sw_graphic_len',
+               'sw_phonetic_len', 'G_sw_phonetic_len',
+               'sw_syllabic_len', 'G_sw_syllabic_len', 'frequency_in_snc')
     _PRIMARY = 3
 
 
 class SplinterTable(Table):
-    _NAME = 'splinter_test'
+    _NAME = 'splinter'
     _FIELDS = ('nu_graphic', 'first_language', 'survey_language', 'image_id', 'type_of_splinter', 'sw1_splinter', 'sw2_splinter', 'sw3_splinter', 'sw4_splinter', 'sw1_splinter_len', 'sw2_splinter_len', 'sw3_splinter_len', 'sw4_splinter_len', 'G_sw1_splinter', 'G_sw1_splinter__ignore', 'G_sw2_splinter', 'G_sw2_splinter__ignore', 'G_sw3_splinter', 'G_sw3_splinter__ignore', 'G_sw4_splinter', 'G_sw4_splinter__ignore', 'G_sw1_splinter_len', 'G_sw1_splinter_len__ignore', 'G_sw2_splinter_len', 'G_sw2_splinter_len__ignore', 'G_sw3_splinter_len', 'G_sw3_splinter_len__ignore', 'G_sw4_splinter_len', 'G_sw4_splinter_len__ignore')
     _PRIMARY = 5
 
