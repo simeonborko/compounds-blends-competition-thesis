@@ -32,7 +32,7 @@ class Table:
         c.execute(query, data)
 
     def create_sheet(self):
-        if self._NAME in self.__wb.get_sheet_names():
+        if self._NAME in self.__wb.sheetnames:
             raise Exception('Harok s nazvom {} uz existuje'.format(self._NAME))
         sheet = self.__wb.create_sheet(self._NAME)
 

@@ -1,6 +1,6 @@
 from collections import OrderedDict
 
-import mysql.connector as mariadb
+import pymysql
 import csv
 import configuration as c
 
@@ -8,14 +8,12 @@ import configuration as c
 class Connection:
 
     def __enter__(self):
-        self.conn = mariadb.connect(
+        self.conn = pymysql.connect(
             host=c.HOST,
             port=c.PORT,
             user=c.USER,
             password=c.PASSWD,
-            database=c.DB,
-            collation='utf8_bin',
-            use_unicode=True
+            database=c.DB
         )
         return self.conn
 
@@ -23,6 +21,7 @@ class Connection:
         self.conn.close()
 
 
+# TODO otestovat ci to pymysql potrebuje
 def decoded(cursor) -> iter:
     return map(lambda r: tuple([x.decode("utf-8") if type(x) is bytes else x for x in r]), cursor)
 
