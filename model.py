@@ -1,5 +1,8 @@
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
+from syllabiky.syllabiky import split_phrase
+from syllabiky.DbMatcher import DbMatcher
+from tools import sk, en
 
 
 class Table:
@@ -7,6 +10,8 @@ class Table:
     _NAME = None
     _FIELDS = None
     _PRIMARY = None  # pocet stlpcov zo zaciatku
+    _ALLOWED_TO_GENERATE = None
+    _ENTITY_CLS = None
 
     __REDFILL = PatternFill("solid", fgColor="FF0000")
     __YELLOWFILL = PatternFill("solid", fgColor="FFFF00")
@@ -46,16 +51,24 @@ class Table:
         for row in self.__select_cursor():
             sheet.append(row)
 
-    def __split_fields(self) -> (tuple, tuple):
+    @classmethod
+    def primary_fields(cls): return cls._FIELDS[cls._PRIMARY:]
+
+    @classmethod
+    def __split_fields(cls) -> (tuple, tuple):
         """Rozdeli stlpce podla toho, ci su editovatelne alebo generovane"""
         editable = []
         generated = []
-        for i, field in enumerate(self._FIELDS[self._PRIMARY:], self._PRIMARY):
-            if field[:2] == 'G_' and field[-8:] != '__ignore':
+        for i, field in enumerate(cls.primary_fields(), cls._PRIMARY):
+            if field[:2] == 'G_' and field[-8:] != '__ignore' or \
+               cls._ALLOWED_TO_GENERATE is not None and field in cls._ALLOWED_TO_GENERATE:
                 generated.append(i)
             else:
                 editable.append(i)
         return tuple(editable), tuple(generated)
+
+    @classmethod
+    def generated_fields(cls) -> tuple: return cls.__split_fields()[1]
 
     def sync(self):
 
@@ -105,10 +118,7 @@ class Table:
                     cell.fill = self.__YELLOWFILL
 
     @classmethod
-    def name(cls):
-        return cls._NAME
-
-
+    def name(cls) -> str: return cls._NAME
 
 
 class ImageTable(Table):
@@ -166,6 +176,10 @@ class SourceWordTable(Table):
                'sw_phonetic_len', 'G_sw_phonetic_len',
                'sw_syllabic_len', 'G_sw_syllabic_len', 'frequency_in_snc')
     _PRIMARY = 3
+    _ALLOWED_TO_GENERATE = ('frequency_in_snc',)
+
+    def generate(self, force: bool):
+        pass  # TODO
 
 
 class SplinterTable(Table):
@@ -174,10 +188,78 @@ class SplinterTable(Table):
     _PRIMARY = 5
 
 
+class Entity:
 
-# from tools.tools import Connection
-#
-# with Connection() as conn:
-#     c = conn.cursor()
-#     c.execute('DESCRIBE image')
-#     print(tuple(x[0] for x in list(c) if x[3] == 'PRI'))
+    _TABLE_CLS = None
+
+    def __init__(self, data: dict):
+        self.__data = data
+        self.__modified = False
+        self.__primary_fields = self._TABLE_CLS.primary_fields
+
+    def __getitem__(self, item):
+        return self.__data[item]
+
+    def __setitem__(self, key, value):
+        if key in self.__primary_fields:
+            raise Exception('Hodnota v stlpci patriacom do primarneho kluca nemoze byt zmenena')
+        if self.__data[key] != value:
+            self.__data[key] = value
+            self.__modified = True
+
+    @property
+    def data(self) -> dict:
+        generated = self._TABLE_CLS.generated_fields()
+        return {k: v for k, v in self.__data.items() if k in generated}
+
+    @property
+    def modified(self) -> bool:
+        return self.__modified
+
+    def generate(self):
+        raise NotImplementedError
+
+
+class SourceWord(Entity):
+
+    CORPUS = None  # corpus ma nastavit volajuci
+    _TABLE_CLS = SourceWordTable
+    __MATCHER = DbMatcher()
+
+    def __init__(self, data: dict):
+        super().__init__(data)
+        self.__lang = self['survey_language']
+
+    def __sw_syllabic(self):
+        if self.__lang == 'SK':
+            self['G_sw_syllabic'] = split_phrase(self['sw_graphic'], self.__MATCHER)
+
+    def __sw_graphic_len(self):
+        if self.__lang == 'SK':
+            self['G_sw_graphic_len'] = sk.count_letters(self['sw_graphic'])
+        elif self.__lang == 'EN':
+            self['G_sw_graphic_len'] = en.count_letters(self['sw_graphic'])
+
+    def __sw_phonetic_len(self):
+        if self.__lang == 'SK':
+            self['G_sw_phonetic_len'] = sk.count_phones(self['sw_phonetic'])
+        elif self.__lang == 'EN':
+            self['G_sw_phonetic_len'] = en.count_phones(self['sw_phonetic'])
+
+    def __sw_syllabic_len(self):
+        if self.__lang == 'SK':
+            self['G_sw_syllabic_len'] = self['G_sw_syllabic'].count('-') + 1
+        elif self.__lang == 'EN':
+            self['G_sw_syllabic_len'] = en.count_syllables(self['sw_phonetic'])
+
+    def __frequency_in_snc(self):
+        if self.__lang == 'SK':
+            self['frequency_in_snc'] = self.CORPUS.get_frequency(self['sw_graphic'])
+
+    def generate(self):
+        self.__sw_syllabic()
+        self.__sw_graphic_len()
+        self.__sw_phonetic_len()
+        self.__sw_syllabic_len()
+        self.__frequency_in_snc()
+

@@ -1,11 +1,13 @@
+from tkinter import messagebox
+from tkinter import *
+
 from openpyxl import Workbook, load_workbook
 from os.path import isfile
 
-from table import ImageTable, LanguageTable, NamingUnitTable, RespondentTable, ResponseTable, SourceWordTable, SplinterTable
+from model import ImageTable, LanguageTable, NamingUnitTable, RespondentTable, ResponseTable, SourceWordTable, SplinterTable
 from tools import Connection, ListSaver
 import configuration
 
-from tkinter import *
 
 TABLES = (ImageTable, LanguageTable, NamingUnitTable, RespondentTable, ResponseTable, SourceWordTable, SplinterTable)
 
@@ -13,7 +15,8 @@ TABLES = (ImageTable, LanguageTable, NamingUnitTable, RespondentTable, ResponseT
 def export():
 
     if isfile(configuration.XLSX_FILE):
-        raise Exception('Subor {} uz existuje'.format(configuration.XLSX_FILE))
+        messagebox.showerror('Chyba', 'Súbor {} už existuje'.format(configuration.XLSX_FILE))
+        return
 
     wb = Workbook()
     with Connection() as conn:
@@ -23,14 +26,24 @@ def export():
     wb.remove(wb['Sheet'])
     wb.save(configuration.XLSX_FILE)
 
+    messagebox.showinfo(
+        'Vytvorenie dokumentu',
+        'Dokument vytvorený:\n\n' + configuration.XLSX_FILE
+    )
+
 
 def sync():
 
     if not isfile(configuration.XLSX_FILE):
-        raise Exception('Subor {} neexistuje'.format(configuration.XLSX_FILE))
+        messagebox.showerror('Chyba', 'Súbor {} neexistuje'.format(configuration.XLSX_FILE))
+        return
 
     tables = selected_tables()
     if len(tables) == 0:
+        messagebox.showwarning(
+            'Synchronizácia',
+            'Neboli vybrané žiadne tabuľky'
+        )
         return
 
     wb = load_workbook(configuration.XLSX_FILE)
@@ -40,6 +53,46 @@ def sync():
         conn.commit()
 
     wb.save(configuration.XLSX_FILE)
+
+    messagebox.showinfo(
+        'Synchronizácia',
+        'Synchronizované:\n\n' + '\n'.join('- ' + table.name() for table in tables)
+    )
+
+
+def generate():
+    if not isfile(configuration.XLSX_FILE):
+        messagebox.showerror('Chyba', 'Súbor {} neexistuje'.format(configuration.XLSX_FILE))
+        return
+
+    generable = (SourceWordTable,)
+
+    tables = set(selected_tables()) & set(generable)
+    if len(tables) == 0:
+        messagebox.showwarning(
+            'Automatizované vyplnenie',
+            'Automatizovane vyplniť sa dajú iba tieto tabuľky:\n\n' + '\n'.join('- ' + table.name() for table in generable)
+        )
+        return
+
+    force = bool(force_var.get())
+
+    wb = load_workbook(configuration.XLSX_FILE)
+    with Connection() as conn:
+        for table in tables:
+            t = table(wb, conn)
+            t.generate(force)
+            t.sync()
+        conn.commit()
+    wb.save(configuration.XLSX_FILE)
+
+    messagebox.showinfo(
+        'Automatizované vyplnenie',
+        'Automatizovane vyplnené a synchronizované:\n\n{}\n\nAj už vyplnené: {}'.format(
+            '\n'.join('- ' + table.name() for table in tables),
+            'Áno' if force else 'Nie'
+        )
+    )
 
 
 checkvars = []
@@ -55,32 +108,39 @@ if not configuration.TKINTER_TRACEBACK:
 with ListSaver(configuration.JSON_FILE, [1] * len(TABLES)) as saver:
     mw = Tk()
     mw.wm_title("Workbook Tlačítka")
+    force_var = IntVar()
+
+    for i, value in enumerate(saver):
+        var = IntVar(value=value)
+        checkvars.append(var)
+        Checkbutton(mw, text=TABLES[i].name(), variable=var).grid(row=i, column=0, sticky=W, padx=(0, 30), pady=2)
 
     Button(
         mw,
         text='Vytvoriť dokument',
         command=export,
-    ).grid(row=0, column=0, padx=5, pady=(5, 10), columnspan=2)
-
-    for i, value in enumerate(saver):
-        var = IntVar(value=value)
-        checkvars.append(var)
-        Checkbutton(mw, text=TABLES[i].name(), variable=var).grid(row=i+1, column=0, sticky=W, padx=(0, 30), pady=2)
+    ).grid(row=0, column=1, padx=5, pady=5, rowspan=2, sticky=E+W)
 
     Button(
         mw,
         text='Synchronizovať',
         command=sync,
-    ).grid(row=1, column=1, padx=5, pady=5, rowspan=2, sticky=E+W)
+    ).grid(row=2, column=1, padx=5, pady=5, rowspan=2, sticky=E+W)
+
     Button(
         mw,
         text='Vyplniť automatizovane',
-        command=lambda: print(selected_tables())
-    ).grid(row=3, column=1, padx=5, pady=5, rowspan=2, sticky=E+W)
+        command=generate
+    ).grid(row=4, column=1, padx=5, pady=5, rowspan=2, sticky=E+W)
+    Checkbutton(mw, text='Aj už vyplnené', variable=force_var).grid(row=4, column=2, rowspan=2)
+
     Button(
         mw,
         text='Kontrola súdržnosti',
-    ).grid(row=5, column=1, padx=5, pady=5, rowspan=2, sticky=E+W)
+        state=DISABLED
+    ).grid(row=6, column=1, padx=5, pady=5, rowspan=2, sticky=E+W)
+
+
 
     mw.mainloop()
 
