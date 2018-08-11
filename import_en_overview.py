@@ -75,7 +75,7 @@ import csv
 from collections import OrderedDict
 from operator import itemgetter
 
-from tools import Connection, tsv_reader, get_res2lang, get_lang2code, decoded, Table
+from tools.tools import Connection, tsv_reader, get_res2lang, get_lang2code, decoded, Table
 from sys import stderr
 
 

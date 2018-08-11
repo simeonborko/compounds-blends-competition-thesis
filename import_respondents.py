@@ -1,7 +1,7 @@
 import csv
 from datetime import datetime
 from collections import OrderedDict
-from connection import Connection
+from tools import Connection
 
 en_file = 'data/en_responses.csv'
 sk_file = 'data/sk_responses.csv'

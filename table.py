@@ -1,6 +1,5 @@
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
-from openpyxl.utils import get_column_letter
 
 
 class Table:
@@ -105,6 +104,9 @@ class Table:
                 for cell in row:
                     cell.fill = self.__YELLOWFILL
 
+    @classmethod
+    def name(cls):
+        return cls._NAME
 
 
 
