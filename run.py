@@ -66,7 +66,7 @@ def generate():
         messagebox.showerror('Chyba', 'Súbor {} neexistuje'.format(configuration.XLSX_FILE))
         return
 
-    generable = (SourceWordTable,)
+    generable = (NamingUnitTable, SourceWordTable)
 
     tables = set(selected_tables()) & set(generable)
     if len(tables) == 0:

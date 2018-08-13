@@ -1,3 +1,4 @@
+import sys
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 from pymysql.cursors import DictCursor
@@ -147,7 +148,7 @@ class Table:
             affected = c.executemany(query, args)
 
             if len(args) != affected:
-                raise Exception("Pocet args: {}, pocet affected: {}".format(len(args), affected))
+                print("Pocet args: {}, pocet affected: {}".format(len(args), affected), file=sys.stderr)
 
             return affected
 
@@ -187,6 +188,15 @@ class NamingUnitTable(Table):
                'lexsh_whatm', 'G_lexsh_whatm', 'G_lexsh_whatm__ignore',
                'split_point_1', 'G_split_point_1', 'split_point_2', 'G_split_point_2', 'split_point_3', 'G_split_point_3')
     _PRIMARY = 4
+    _GENERATE_SELECT = """select * from {} where
+  survey_language='SK' and G_nu_syllabic is null
+  or G_nu_graphic_len is null
+  or nu_phonetic is not null and G_nu_phonetic_len is null
+  or survey_language='SK' and G_nu_syllabic_len is null
+  or survey_language='EN' and nu_phonetic is not null and G_nu_syllabic_len is null""".format(_NAME)
+
+    def generate(self, force, **kwargs) -> int:
+        return self._generate(force, NamingUnit)
 
 
 class RespondentTable(Table):
@@ -323,3 +333,74 @@ class SourceWord(Entity):
         self.__sw_syllabic_len()
         self.__frequency_in_snc()
 
+
+class NamingUnit(Entity):
+
+    _TABLE_CLS = NamingUnitTable
+    __MATCHER = DbMatcher()
+
+    def __init__(self, data: dict):
+        super().__init__(data)
+        self.__lang = self['survey_language']
+
+    def __nu_syllabic(self):
+        if self.__lang == 'SK':
+            newval = None
+            try:
+                newval = split_phrase(self['nu_graphic'], self.__MATCHER)
+            except TypeError:
+                print("TypeError split_phrase:", self['nu_graphic'])
+            self['G_nu_syllabic'] = newval
+
+    def __nu_graphic_len(self):
+        if self.__lang == 'SK':
+            self['G_nu_graphic_len'] = sk.count_letters(self['nu_graphic'])
+        elif self.__lang == 'EN':
+            self['G_nu_graphic_len'] = en.count_letters(self['nu_graphic'])
+
+    def __nu_phonetic_len(self):
+        if self['nu_phonetic']:
+            if self.__lang == 'SK':
+                self['G_nu_phonetic_len'] = sk.count_phones(self['nu_phonetic'])
+            elif self.__lang == 'EN':
+                self['G_nu_phonetic_len'] = en.count_phones(self['nu_phonetic'])
+        else:
+            self['G_nu_phonetic_len'] = None
+
+    def __nu_syllabic_len(self):
+        newval = None
+        if self.__lang == 'SK' and self['G_nu_syllabic']:
+            newval = self['G_nu_syllabic'].count('-') + 1
+        elif self.__lang == 'EN' and self['nu_phonetic']:
+            newval = en.count_syllables(self['nu_phonetic'])
+        self['G_nu_syllabic_len'] = newval
+
+    # def __n_of_overlapping_letters(self):
+    #     pass
+    #
+    # def __n_of_overlapping_phones(self):
+    #     pass
+    #
+    # def __lexsh_main(self):
+    #     pass
+    #
+    # def __lexsh_sm(self):
+    #     pass
+    #
+    # def __lexsh_whatm(self):
+    #     pass
+    #
+    # def __split_point_1(self):
+    #     pass
+    #
+    # def __split_point_2(self):
+    #     pass
+    #
+    # def __split_point_3(self):
+    #     pass
+
+    def generate(self):
+        self.__nu_syllabic()
+        self.__nu_graphic_len()
+        self.__nu_phonetic_len()
+        self.__nu_syllabic_len()
