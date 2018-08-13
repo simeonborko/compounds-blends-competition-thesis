@@ -1,5 +1,6 @@
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
+from pymysql.cursors import DictCursor
 from syllabiky.syllabiky import split_phrase
 from syllabiky.DbMatcher import DbMatcher
 from tools import sk, en
@@ -11,7 +12,7 @@ class Table:
     _FIELDS = None
     _PRIMARY = None  # pocet stlpcov zo zaciatku
     _ALLOWED_TO_GENERATE = None
-    _ENTITY_CLS = None
+    _GENERATE_SELECT = None
 
     __REDFILL = PatternFill("solid", fgColor="FF0000")
     __YELLOWFILL = PatternFill("solid", fgColor="FFFF00")
@@ -120,6 +121,30 @@ class Table:
     @classmethod
     def name(cls) -> str: return cls._NAME
 
+    def _generate(self, force: bool, cls):
+        c = self.__conn.cursor(cursor=DictCursor)
+        c.execute("SELECT * FROM {}".format(self._NAME) if force else self._GENERATE_SELECT)
+
+        args = []
+
+        for data in c:
+            entity = cls(data)
+            entity.generate()
+            if entity.modified:
+                args.append(entity.data)
+
+        query = "UPDATE {} SET {} WHERE {}".format(
+            self._NAME,
+            ", ".join("{0}=%({0})s".format(g) for g in self.generated_fields()),
+            " AND ".join("{0}=%({0})s".format(p) for p in self.primary_fields())
+        )
+
+        c = self.__conn.cursor()
+        affected = c.executemany(query, args)
+
+        if len(args) != affected:
+            raise Exception("Pocet args: {}, pocet affected: {}".format(len(args), affected))
+
 
 class ImageTable(Table):
     _NAME = 'image'
@@ -177,9 +202,16 @@ class SourceWordTable(Table):
                'sw_syllabic_len', 'G_sw_syllabic_len', 'frequency_in_snc')
     _PRIMARY = 3
     _ALLOWED_TO_GENERATE = ('frequency_in_snc',)
+    _GENERATE_SELECT = """select * from {} where
+  survey_language='SK' and G_sw_syllabic is null
+  or G_sw_graphic_len is null
+  or sw_phonetic is not null and G_sw_phonetic_len is null
+  or survey_language='SK' and G_sw_syllabic_len is null
+  or survey_language='EN' and sw_phonetic is not null and G_sw_syllabic_len is null
+  or survey_language='SK' and frequency_in_snc is null""".format(_NAME)
 
     def generate(self, force: bool):
-        pass  # TODO
+        self._generate(force, SourceWord)
 
 
 class SplinterTable(Table):
@@ -195,7 +227,7 @@ class Entity:
     def __init__(self, data: dict):
         self.__data = data
         self.__modified = False
-        self.__primary_fields = self._TABLE_CLS.primary_fields
+        self.__primary_fields = set(self._TABLE_CLS.primary_fields())
 
     def __getitem__(self, item):
         return self.__data[item]
@@ -209,8 +241,9 @@ class Entity:
 
     @property
     def data(self) -> dict:
-        generated = self._TABLE_CLS.generated_fields()
-        return {k: v for k, v in self.__data.items() if k in generated}
+        """Vrati data, ktore mozu byt generovane alebo patria do primarneho kluca"""
+        fields = self.__primary_fields | self._TABLE_CLS.generated_fields()
+        return {k: v for k, v in self.__data.items() if k in fields}
 
     @property
     def modified(self) -> bool:
@@ -241,15 +274,17 @@ class SourceWord(Entity):
             self['G_sw_graphic_len'] = en.count_letters(self['sw_graphic'])
 
     def __sw_phonetic_len(self):
-        if self.__lang == 'SK':
-            self['G_sw_phonetic_len'] = sk.count_phones(self['sw_phonetic'])
-        elif self.__lang == 'EN':
-            self['G_sw_phonetic_len'] = en.count_phones(self['sw_phonetic'])
+        if self['sw_phonetic']:
+            if self.__lang == 'SK':
+                self['G_sw_phonetic_len'] = sk.count_phones(self['sw_phonetic'])
+            elif self.__lang == 'EN':
+                self['G_sw_phonetic_len'] = en.count_phones(self['sw_phonetic'])
 
     def __sw_syllabic_len(self):
-        if self.__lang == 'SK':
+        """najprv zavolat self.__sw_syllabic()"""
+        if self.__lang == 'SK' and self['G_sw_syllabic']:
             self['G_sw_syllabic_len'] = self['G_sw_syllabic'].count('-') + 1
-        elif self.__lang == 'EN':
+        elif self.__lang == 'EN' and self['sw_phonetic']:
             self['G_sw_syllabic_len'] = en.count_syllables(self['sw_phonetic'])
 
     def __frequency_in_snc(self):

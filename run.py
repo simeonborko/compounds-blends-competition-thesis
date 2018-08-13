@@ -108,7 +108,7 @@ if not configuration.TKINTER_TRACEBACK:
 with ListSaver(configuration.JSON_FILE, [1] * len(TABLES)) as saver:
     mw = Tk()
     mw.wm_title("Workbook Tlačítka")
-    force_var = IntVar()
+    force_var = IntVar(value=1)
 
     for i, value in enumerate(saver):
         var = IntVar(value=value)
