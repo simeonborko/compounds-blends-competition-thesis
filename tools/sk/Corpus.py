@@ -28,6 +28,9 @@ class Corpus:
 
     def get_frequency(self, word):
 
+        if not word or not word.strip():
+            return None
+
         if word in self.data:
             return self.data[word]
 

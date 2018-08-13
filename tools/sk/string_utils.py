@@ -56,15 +56,17 @@ def get_phones_list(word):
     return lst
 
 
-def count_phones(word):
+def count_phones(word, rep_i=True):
     """Count phones in word in phonetic transcription."""
+    if rep_i:
+        word = replace_i(word)
     try:
         lst = get_phones_list(word)
     except Exception as e:
         if word[0] != word[0].lower():
             return count_phones(decapitalize(word))
         #print(e, file=stderr)
-        return '!!!'
+        return None
     return len(lst)
 
 

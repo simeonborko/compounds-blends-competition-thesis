@@ -3,6 +3,7 @@ from openpyxl.styles import Font, PatternFill
 from pymysql.cursors import DictCursor
 from syllabiky.syllabiky import split_phrase
 from syllabiky.DbMatcher import DbMatcher
+import configuration
 from tools import sk, en
 
 
@@ -53,14 +54,14 @@ class Table:
             sheet.append(row)
 
     @classmethod
-    def primary_fields(cls): return cls._FIELDS[cls._PRIMARY:]
+    def primary_fields(cls): return cls._FIELDS[:cls._PRIMARY]
 
     @classmethod
     def __split_fields(cls) -> (tuple, tuple):
         """Rozdeli stlpce podla toho, ci su editovatelne alebo generovane"""
         editable = []
         generated = []
-        for i, field in enumerate(cls.primary_fields(), cls._PRIMARY):
+        for i, field in enumerate(cls._FIELDS[cls._PRIMARY:], cls._PRIMARY):
             if field[:2] == 'G_' and field[-8:] != '__ignore' or \
                cls._ALLOWED_TO_GENERATE is not None and field in cls._ALLOWED_TO_GENERATE:
                 generated.append(i)
@@ -69,7 +70,8 @@ class Table:
         return tuple(editable), tuple(generated)
 
     @classmethod
-    def generated_fields(cls) -> tuple: return cls.__split_fields()[1]
+    def generated_fields(cls) -> tuple:
+        return tuple(cls._FIELDS[i] for i in cls.__split_fields()[1])
 
     def sync(self):
 
@@ -121,7 +123,7 @@ class Table:
     @classmethod
     def name(cls) -> str: return cls._NAME
 
-    def _generate(self, force: bool, cls):
+    def _generate(self, force: bool, cls) -> int:
         c = self.__conn.cursor(cursor=DictCursor)
         c.execute("SELECT * FROM {}".format(self._NAME) if force else self._GENERATE_SELECT)
 
@@ -133,17 +135,24 @@ class Table:
             if entity.modified:
                 args.append(entity.data)
 
-        query = "UPDATE {} SET {} WHERE {}".format(
-            self._NAME,
-            ", ".join("{0}=%({0})s".format(g) for g in self.generated_fields()),
-            " AND ".join("{0}=%({0})s".format(p) for p in self.primary_fields())
-        )
+        if len(args):
 
-        c = self.__conn.cursor()
-        affected = c.executemany(query, args)
+            query = "UPDATE {} SET {} WHERE {}".format(
+                self._NAME,
+                ", ".join("{0}=%({0})s".format(g) for g in self.generated_fields()),
+                " AND ".join("{0}=%({0})s".format(p) for p in self.primary_fields())
+            )
 
-        if len(args) != affected:
-            raise Exception("Pocet args: {}, pocet affected: {}".format(len(args), affected))
+            c = self.__conn.cursor()
+            affected = c.executemany(query, args)
+
+            if len(args) != affected:
+                raise Exception("Pocet args: {}, pocet affected: {}".format(len(args), affected))
+
+            return affected
+
+        else:
+            return 0
 
 
 class ImageTable(Table):
@@ -210,8 +219,15 @@ class SourceWordTable(Table):
   or survey_language='EN' and sw_phonetic is not null and G_sw_syllabic_len is null
   or survey_language='SK' and frequency_in_snc is null""".format(_NAME)
 
-    def generate(self, force: bool):
-        self._generate(force, SourceWord)
+    def generate(self, force, **kwargs) -> int:
+        if kwargs['corpus']:
+            with sk.Corpus(configuration.CORPUS_FILE) as corpus:
+                SourceWord.CORPUS = corpus
+                affected = self._generate(force, SourceWord)
+                SourceWord.CORPUS = None
+            return affected
+        else:
+            return self._generate(force, SourceWord)
 
 
 class SplinterTable(Table):
@@ -227,7 +243,7 @@ class Entity:
     def __init__(self, data: dict):
         self.__data = data
         self.__modified = False
-        self.__primary_fields = set(self._TABLE_CLS.primary_fields())
+        self.__primary_fields = self._TABLE_CLS.primary_fields()
 
     def __getitem__(self, item):
         return self.__data[item]
@@ -242,7 +258,7 @@ class Entity:
     @property
     def data(self) -> dict:
         """Vrati data, ktore mozu byt generovane alebo patria do primarneho kluca"""
-        fields = self.__primary_fields | self._TABLE_CLS.generated_fields()
+        fields = self.__primary_fields + self._TABLE_CLS.generated_fields()
         return {k: v for k, v in self.__data.items() if k in fields}
 
     @property
@@ -265,7 +281,12 @@ class SourceWord(Entity):
 
     def __sw_syllabic(self):
         if self.__lang == 'SK':
-            self['G_sw_syllabic'] = split_phrase(self['sw_graphic'], self.__MATCHER)
+            newval = None
+            try:
+                newval = split_phrase(self['sw_graphic'], self.__MATCHER)
+            except TypeError:
+                print("TypeError split_phrase:", self['sw_graphic'])
+            self['G_sw_syllabic'] = newval
 
     def __sw_graphic_len(self):
         if self.__lang == 'SK':
@@ -279,16 +300,20 @@ class SourceWord(Entity):
                 self['G_sw_phonetic_len'] = sk.count_phones(self['sw_phonetic'])
             elif self.__lang == 'EN':
                 self['G_sw_phonetic_len'] = en.count_phones(self['sw_phonetic'])
+        else:
+            self['G_sw_phonetic_len'] = None
 
     def __sw_syllabic_len(self):
         """najprv zavolat self.__sw_syllabic()"""
+        newval = None
         if self.__lang == 'SK' and self['G_sw_syllabic']:
-            self['G_sw_syllabic_len'] = self['G_sw_syllabic'].count('-') + 1
+            newval = self['G_sw_syllabic'].count('-') + 1
         elif self.__lang == 'EN' and self['sw_phonetic']:
-            self['G_sw_syllabic_len'] = en.count_syllables(self['sw_phonetic'])
+            newval = en.count_syllables(self['sw_phonetic'])
+        self['G_sw_syllabic_len'] = newval
 
     def __frequency_in_snc(self):
-        if self.__lang == 'SK':
+        if self.__lang == 'SK' and self.CORPUS is not None:
             self['frequency_in_snc'] = self.CORPUS.get_frequency(self['sw_graphic'])
 
     def generate(self):

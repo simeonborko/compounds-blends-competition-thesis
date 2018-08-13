@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from tkinter import messagebox
 from tkinter import *
 
@@ -76,21 +77,26 @@ def generate():
         return
 
     force = bool(force_var.get())
+    corpus = bool(corpus_var.get())
+
+    affected = OrderedDict()
 
     wb = load_workbook(configuration.XLSX_FILE)
     with Connection() as conn:
         for table in tables:
             t = table(wb, conn)
-            t.generate(force)
+            t.sync()
+            affected[table.name()] = t.generate(force=force, corpus=corpus)
             t.sync()
         conn.commit()
     wb.save(configuration.XLSX_FILE)
 
     messagebox.showinfo(
         'Automatizované vyplnenie',
-        'Automatizovane vyplnené a synchronizované:\n\n{}\n\nAj už vyplnené: {}'.format(
-            '\n'.join('- ' + table.name() for table in tables),
-            'Áno' if force else 'Nie'
+        'Automatizovane vyplnené a synchronizované:\n\n{}\n\nAj už vyplnené: {}\nKorpus: {}'.format(
+            '\n'.join('- {} ({})'.format(tablename, aff) for tablename, aff in affected.items()),
+            'Áno' if force else 'Nie',
+            'Áno' if corpus else 'Nie'
         )
     )
 
@@ -105,10 +111,11 @@ def selected_tables():
 if not configuration.TKINTER_TRACEBACK:
     Tk.report_callback_exception = lambda obj, exc, val, tb: print(val, file=sys.stderr)
 
-with ListSaver(configuration.JSON_FILE, [1] * len(TABLES)) as saver:
+with ListSaver(configuration.CHECKBOX_FILE, [1] * len(TABLES)) as saver:
     mw = Tk()
     mw.wm_title("Workbook Tlačítka")
     force_var = IntVar(value=1)
+    corpus_var = IntVar(value=0)
 
     for i, value in enumerate(saver):
         var = IntVar(value=value)
@@ -132,15 +139,14 @@ with ListSaver(configuration.JSON_FILE, [1] * len(TABLES)) as saver:
         text='Vyplniť automatizovane',
         command=generate
     ).grid(row=4, column=1, padx=5, pady=5, rowspan=2, sticky=E+W)
-    Checkbutton(mw, text='Aj už vyplnené', variable=force_var).grid(row=4, column=2, rowspan=2)
+    Checkbutton(mw, text='Aj už vyplnené', variable=force_var).grid(row=4, column=2)
+    Checkbutton(mw, text='Korpus', variable=corpus_var).grid(row=5, column=2)
 
     Button(
         mw,
         text='Kontrola súdržnosti',
         state=DISABLED
     ).grid(row=6, column=1, padx=5, pady=5, rowspan=2, sticky=E+W)
-
-
 
     mw.mainloop()
 
