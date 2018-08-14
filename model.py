@@ -15,8 +15,7 @@ class Table:
     _PRIMARY = None  # pocet stlpcov zo zaciatku
     _ALLOWED_TO_GENERATE = None
     _GENERATE_SELECT = None
-    _INTEGRITY_ADD_INSERT = None
-    _INTEGRITY_JUNK_SELECT = None
+    _INTEGRITY_SELECT = None
 
     __REDFILL = PatternFill("solid", fgColor="FF0000")
     __YELLOWFILL = PatternFill("solid", fgColor="FFFF00")
@@ -161,12 +160,26 @@ class Table:
 
     def integrity_add(self) -> int:
         c = self.__conn.cursor()
-        added = c.execute(self._INTEGRITY_ADD_INSERT)
+        added = c.execute(
+            "INSERT IGNORE INTO {} ({}) {}".format(
+                self._NAME,
+                ', '.join(self.primary_fields()),
+                self._INTEGRITY_SELECT
+            )
+        )
         return added
 
     def integrity_junk(self) -> int:
         c = self.__conn.cursor()
-        n = c.execute(self._INTEGRITY_JUNK_SELECT)
+        n = c.execute(
+            "SELECT {} FROM {} TBL LEFT JOIN ({}) TMP ON {} WHERE {}".format(
+                ', '.join('TBL.' + field for field in self._FIELDS),
+                self._NAME,
+                self._INTEGRITY_SELECT,
+                ' AND '.join('TBL.{0} = TMP.{0}'.format(p) for p in self.primary_fields()),
+                ' AND '.join('TMP.{} IS NULL'.format(p) for p in self.primary_fields())
+            )
+        )
         if not n:
             return 0
 
@@ -228,20 +241,15 @@ class NamingUnitTable(Table):
                'lexsh_whatm', 'G_lexsh_whatm', 'G_lexsh_whatm__ignore',
                'split_point_1', 'G_split_point_1', 'split_point_2', 'G_split_point_2', 'split_point_3', 'G_split_point_3')
     _PRIMARY = 4
+
     _GENERATE_SELECT = """select * from {} where
   survey_language='SK' and G_nu_syllabic is null
   or G_nu_graphic_len is null
   or nu_phonetic is not null and G_nu_phonetic_len is null
   or survey_language='SK' and G_nu_syllabic_len is null
   or survey_language='EN' and nu_phonetic is not null and G_nu_syllabic_len is null""".format(_NAME)
-    _INTEGRITY_ADD_INSERT = """insert ignore into naming_unit (nu_graphic, first_language, survey_language, image_id)
-  select distinct nu_graphic, first_language, survey_language, image_id from response natural join respondent"""
-    _INTEGRITY_JUNK_SELECT = """select {} from naming_unit NU LEFT JOIN
-  (select distinct nu_graphic, first_language, survey_language, image_id from response natural join respondent) TMP
-  ON NU.nu_graphic=TMP.nu_graphic AND NU.first_language=TMP.first_language AND NU.survey_language=TMP.survey_language AND NU.image_id=TMP.image_id
-  WHERE TMP.nu_graphic IS NULL AND TMP.first_language IS NULL AND TMP.survey_language IS NULL and TMP.image_id IS NULL;""".format(
-        ', '.join('NU.' + field for field in _FIELDS)
-    )
+
+    _INTEGRITY_SELECT = "SELECT DISTINCT {} FROM response NATURAL JOIN respondent".format(', '.join(_FIELDS[:_PRIMARY]))
 
     def generate(self, force, **kwargs) -> int:
         return self._generate(force, NamingUnit)
@@ -276,6 +284,16 @@ class SourceWordTable(Table):
   or survey_language='SK' and G_sw_syllabic_len is null
   or survey_language='EN' and sw_phonetic is not null and G_sw_syllabic_len is null
   or survey_language='SK' and frequency_in_snc is null""".format(_NAME)
+
+    _INTEGRITY_SELECT = ' UNION '.join(
+        'SELECT {0} sw_graphic, first_language, survey_language FROM naming_unit WHERE {0} IS NOT NULL'.format(
+            'sw{}_graphic'.format(i+1)
+        ) for i in range(4)
+    )
+    # SELECT sw1_graphic sw_graphic, first_language, survey_language from naming_unit WHERE sw1_graphic is not null
+    # UNION SELECT sw2_graphic, first_language, survey_language from naming_unit WHERE sw2_graphic is not null
+    # UNION SELECT sw3_graphic, first_language, survey_language from naming_unit WHERE sw3_graphic is not null
+    # UNION SELECT sw4_graphic, first_language, survey_language from naming_unit WHERE sw4_graphic is not null
 
     def generate(self, force, **kwargs) -> int:
         if kwargs['corpus']:

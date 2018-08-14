@@ -106,7 +106,7 @@ def integrity():
         messagebox.showerror('Chyba', 'Súbor {} neexistuje'.format(configuration.XLSX_FILE))
         return
 
-    integritable = (NamingUnitTable,)
+    integritable = (NamingUnitTable, SourceWordTable)
 
     tables = set(selected_tables()) & set(integritable)
     if len(tables) == 0:
