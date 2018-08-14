@@ -15,6 +15,8 @@ class Table:
     _PRIMARY = None  # pocet stlpcov zo zaciatku
     _ALLOWED_TO_GENERATE = None
     _GENERATE_SELECT = None
+    _INTEGRITY_ADD_INSERT = None
+    _INTEGRITY_JUNK_SELECT = None
 
     __REDFILL = PatternFill("solid", fgColor="FF0000")
     __YELLOWFILL = PatternFill("solid", fgColor="FFFF00")
@@ -38,17 +40,19 @@ class Table:
         c = self.__conn.cursor()
         c.execute(query, data)
 
+    def __add_header(self, sheet):
+        sheet.append(self._FIELDS)
+        sheet.row_dimensions[1].font = Font(bold=True)
+        for i in range(self._PRIMARY):
+            sheet.cell(row=1, column=i + 1).font = Font(bold=True, italic=True)
+
     def create_sheet(self):
         if self._NAME in self.__wb.sheetnames:
             raise Exception('Harok s nazvom {} uz existuje'.format(self._NAME))
         sheet = self.__wb.create_sheet(self._NAME)
 
         # nadpisy
-        sheet.append(self._FIELDS)
-        sheet.row_dimensions[1].font = Font(bold=True)
-        for i in range(self._PRIMARY):
-            sheet.cell(row=1, column=i+1).font = Font(bold=True, italic=True)
-        sheet.iter_rows()
+        self.__add_header(sheet)
 
         # data
         for row in self.__select_cursor():
@@ -155,6 +159,42 @@ class Table:
         else:
             return 0
 
+    def integrity_add(self) -> int:
+        c = self.__conn.cursor()
+        added = c.execute(self._INTEGRITY_ADD_INSERT)
+        return added
+
+    def integrity_junk(self) -> int:
+        c = self.__conn.cursor()
+        n = c.execute(self._INTEGRITY_JUNK_SELECT)
+        if not n:
+            return 0
+
+        # vytvorit harok
+        sheetname = 'junk {}'.format(self._NAME)
+        if sheetname not in self.__wb.sheetnames:
+            sheet = self.__wb.create_sheet(sheetname)
+            self.__add_header(sheet)
+        else:
+            sheet = self.__wb[sheetname]
+
+        # pridat riadky a ulozit kluce
+        keys = []
+        for row in c:
+            keys.append(row[:self._PRIMARY])
+            sheet.append(row)
+
+        c = self.__conn.cursor()
+        n = c.executemany(
+            """DELETE FROM {} WHERE {}""".format(
+                self._NAME,
+                ' AND '.join('{} = %s'.format(p) for p in self.primary_fields())
+            ),
+            keys
+        )
+
+        return n or 0
+
 
 class ImageTable(Table):
     _NAME = 'image'
@@ -194,6 +234,14 @@ class NamingUnitTable(Table):
   or nu_phonetic is not null and G_nu_phonetic_len is null
   or survey_language='SK' and G_nu_syllabic_len is null
   or survey_language='EN' and nu_phonetic is not null and G_nu_syllabic_len is null""".format(_NAME)
+    _INTEGRITY_ADD_INSERT = """insert ignore into naming_unit (nu_graphic, first_language, survey_language, image_id)
+  select distinct nu_graphic, first_language, survey_language, image_id from response natural join respondent"""
+    _INTEGRITY_JUNK_SELECT = """select {} from naming_unit NU LEFT JOIN
+  (select distinct nu_graphic, first_language, survey_language, image_id from response natural join respondent) TMP
+  ON NU.nu_graphic=TMP.nu_graphic AND NU.first_language=TMP.first_language AND NU.survey_language=TMP.survey_language AND NU.image_id=TMP.image_id
+  WHERE TMP.nu_graphic IS NULL AND TMP.first_language IS NULL AND TMP.survey_language IS NULL and TMP.image_id IS NULL;""".format(
+        ', '.join('NU.' + field for field in _FIELDS)
+    )
 
     def generate(self, force, **kwargs) -> int:
         return self._generate(force, NamingUnit)

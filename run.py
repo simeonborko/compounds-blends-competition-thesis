@@ -101,6 +101,43 @@ def generate():
     )
 
 
+def integrity():
+    if not isfile(configuration.XLSX_FILE):
+        messagebox.showerror('Chyba', 'Súbor {} neexistuje'.format(configuration.XLSX_FILE))
+        return
+
+    integritable = (NamingUnitTable,)
+
+    tables = set(selected_tables()) & set(integritable)
+    if len(tables) == 0:
+        messagebox.showwarning(
+            'Kontrola súdržnosti',
+            'Kontrolovať sa dajú iba tieto tabuľky:\n\n' + '\n'.join('- ' + table.name() for table in integritable)
+        )
+        return
+
+    affected = OrderedDict()
+
+    wb = load_workbook(configuration.XLSX_FILE)
+    with Connection() as conn:
+        for table in tables:
+            t = table(wb, conn)
+            t.sync()
+            added = t.integrity_add()
+            removed = t.integrity_junk()
+            affected[table.name()] = (added, removed)
+            t.sync()
+        conn.commit()
+    wb.save(configuration.XLSX_FILE)
+
+    messagebox.showinfo(
+        'Kontrola súdržnosti',
+        'Skontrolované a synchronizované:\n\n{}\n\nOdobrané riadky sú v tabuľke `junk [názov tabuľky]`'.format(
+            '\n'.join('- {} (pridané: {}, odobrané: {})'.format(tablename, *a) for tablename, a in affected.items()),
+        )
+    )
+
+
 checkvars = []
 
 
@@ -145,7 +182,7 @@ with ListSaver(configuration.CHECKBOX_FILE, [1] * len(TABLES)) as saver:
     Button(
         mw,
         text='Kontrola súdržnosti',
-        state=DISABLED
+        command=integrity
     ).grid(row=6, column=1, padx=5, pady=5, rowspan=2, sticky=E+W)
 
     mw.mainloop()
