@@ -219,6 +219,7 @@ class LanguageTable(Table):
     _NAME = 'language'
     _FIELDS = ('code', 'name')
     _PRIMARY = 1
+    _INTEGRITY_SELECT = "SELECT first_language code FROM respondent UNION SELECT survey_language code FROM respondent"
 
 
 class NamingUnitTable(Table):
