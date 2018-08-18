@@ -142,6 +142,8 @@ def integrity():
 
 checkvars = []
 
+default_checkvals = [1] * len(TABLES) + [1, 0]
+
 
 def selected_tables():
     return [TABLES[i] for i, var in enumerate(checkvars) if var.get() == 1]
@@ -150,16 +152,19 @@ def selected_tables():
 if not configuration.TKINTER_TRACEBACK:
     Tk.report_callback_exception = lambda obj, exc, val, tb: print(val, file=sys.stderr)
 
-with ListSaver(configuration.CHECKBOX_FILE, [1] * len(TABLES)) as saver:
+with ListSaver(configuration.CHECKBOX_FILE, default_checkvals) as saver:
     mw = Tk()
     mw.wm_title("Workbook Tlačítka")
-    force_var = IntVar(value=1)
-    corpus_var = IntVar(value=0)
 
-    for i, value in enumerate(saver):
-        var = IntVar(value=value)
+    checkvals = list(saver)
+
+    for i, tbl in enumerate(TABLES):
+        var = IntVar(value=checkvals.pop(0))
         checkvars.append(var)
-        Checkbutton(mw, text=TABLES[i].name(), variable=var).grid(row=i, column=0, sticky=W, padx=(0, 30), pady=2)
+        Checkbutton(mw, text=tbl.name(), variable=var).grid(row=i, column=0, sticky=W, padx=(0, 30), pady=2)
+
+    force_var = IntVar(value=checkvals.pop(0))
+    corpus_var = IntVar(value=checkvals.pop(0))
 
     Button(
         mw,
@@ -189,5 +194,5 @@ with ListSaver(configuration.CHECKBOX_FILE, [1] * len(TABLES)) as saver:
 
     mw.mainloop()
 
-    for i, var in enumerate(checkvars):
+    for i, var in enumerate(checkvars + [force_var, corpus_var]):
         saver[i] = var.get()
