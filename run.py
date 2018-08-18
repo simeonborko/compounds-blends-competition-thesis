@@ -106,9 +106,11 @@ def integrity():
         messagebox.showerror('Chyba', 'Súbor {} neexistuje'.format(configuration.XLSX_FILE))
         return
 
-    integritable = (NamingUnitTable, SourceWordTable)
+    integritable = (NamingUnitTable, SourceWordTable, SplinterTable)
 
-    tables = set(selected_tables()) & set(integritable)
+    # NamingUnit musi ist pred Splinter
+    selected = set(selected_tables())
+    tables = tuple(tbl for tbl in integritable if tbl in selected)
     if len(tables) == 0:
         messagebox.showwarning(
             'Kontrola súdržnosti',

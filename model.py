@@ -311,6 +311,23 @@ class SplinterTable(Table):
     _FIELDS = ('nu_graphic', 'first_language', 'survey_language', 'image_id', 'type_of_splinter', 'sw1_splinter', 'sw2_splinter', 'sw3_splinter', 'sw4_splinter', 'sw1_splinter_len', 'sw2_splinter_len', 'sw3_splinter_len', 'sw4_splinter_len', 'G_sw1_splinter', 'G_sw1_splinter__ignore', 'G_sw2_splinter', 'G_sw2_splinter__ignore', 'G_sw3_splinter', 'G_sw3_splinter__ignore', 'G_sw4_splinter', 'G_sw4_splinter__ignore', 'G_sw1_splinter_len', 'G_sw1_splinter_len__ignore', 'G_sw2_splinter_len', 'G_sw2_splinter_len__ignore', 'G_sw3_splinter_len', 'G_sw3_splinter_len__ignore', 'G_sw4_splinter_len', 'G_sw4_splinter_len__ignore')
     _PRIMARY = 5
 
+    _INTEGRITY_SELECT = "SELECT {} FROM naming_unit, ({}) T".format(
+        ', '.join(_FIELDS[:_PRIMARY]),
+        ' UNION '.join(
+            'SELECT \'{}\' type_of_splinter'.format(t) for t in (
+                'graphic strict',
+                'graphic modified',
+                'phonetic strict',
+                'phonetic modified'
+            )
+        )
+    )
+    # SELECT nu_graphic, first_language, survey_language, image_id, type_of_splinter FROM naming_unit,
+    #   (SELECT 'graphic strict' type_of_splinter
+    # UNION SELECT 'graphic modified' type_of_splinter
+    # UNION SELECT 'phonetic strict' type_of_splinter
+    # UNION SELECT 'phonetic modified' type_of_splinter) T;
+
 
 class Entity:
 
