@@ -1,6 +1,7 @@
 from abc import ABC, ABCMeta, abstractmethod
 import sys
 from collections import namedtuple
+import re
 
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
@@ -106,6 +107,9 @@ class TableLike(ABC):
     @classmethod
     def name(cls) -> str: return cls._NAME
 
+    @classmethod
+    def fields(cls) -> tuple: return cls._FIELDS
+
 
 class StaticView(TableLike):
 
@@ -171,7 +175,7 @@ class Table(EditableTableLike, metaclass=ABCMeta):
 
     def __init__(self, wb: Workbook, conn):
         super().__init__(wb, conn)
-        self._GENERATE_SELECT = "SELECT {} FROM {}".format(','.join(self._FIELDS), self._NAME)
+        self._EXPORT_SELECT = "SELECT {} FROM {}".format(','.join(self._FIELDS), self._NAME)
 
     def _update(self, datarow):
         query = "UPDATE {} SET {} WHERE {}".format(
@@ -263,9 +267,6 @@ class Table(EditableTableLike, metaclass=ABCMeta):
         )
         return exres.result
 
-
-class SplinterView(EditableTableLike):
-    pass
 
 
 class ImageTable(Table):
@@ -549,6 +550,216 @@ class NamingUnit(Entity):
         self.__nu_syllabic_len()
 
 
+class SplinterView(EditableTableLike):
+
+    # TODO skontrolovat, ci pocet riadkov v tomto selekte je rovnaky ako pocet riadkov v naming_unit
+
+    _NAME = 'splinter_view'
+    __PRIMARY_SELECT_FIELDS = (
+        'NU.nu_graphic',
+        'NU.first_language',
+        'NU.survey_language',
+        'I.image_id',
+    )
+    _PRIMARY = len(__PRIMARY_SELECT_FIELDS)
+
+    __SELECT_FIELDS = __PRIMARY_SELECT_FIELDS + (
+
+        'I.sub_sem_cat',
+        'I.dom_sem_cat',
+        'I.sub_name',
+        'I.dom_name',
+        'I.sub_number',
+        'I.dom_number',
+        'I.half_number',
+        'I.sub_sub',
+
+        'nu_phonetic',
+        'nu_syllabic',
+        'nu_graphic_len',
+        'nu_phonetic_len',
+        'nu_syllabic_len',
+        'sw1_graphic',
+        'sw2_graphic',
+        'sw3_graphic',
+        'sw4_graphic',
+        'SW1.sw_word_class sw1_word_class',
+        'SW2.sw_word_class sw2_word_class',
+        'SW3.sw_word_class sw3_word_class',
+        'SW4.sw_word_class sw4_word_class',
+
+        'SW1.source_language sw1_source_language',
+        'SW2.source_language sw2_source_language',
+        'SW3.source_language sw3_source_language',
+        'SW4.source_language sw4_source_language',
+
+        'SW1.sw_graphic_len sw1_graphic_len',
+        'SW2.sw_graphic_len sw2_graphic_len',
+        'SW3.sw_graphic_len sw3_graphic_len',
+        'SW4.sw_graphic_len sw4_graphic_len',
+        'SW1.sw_phonetic sw1_phonetic',
+        'SW2.sw_phonetic sw2_phonetic',
+        'SW3.sw_phonetic sw3_phonetic',
+        'SW4.sw_phonetic sw4_phonetic',
+        'SW1.sw_phonetic_len sw1_phonetic_len',
+        'SW2.sw_phonetic_len sw2_phonetic_len',
+        'SW3.sw_phonetic_len sw3_phonetic_len',
+        'SW4.sw_phonetic_len sw4_phonetic_len',
+        'SW1.sw_syllabic sw1_syllabic',
+        'SW2.sw_syllabic sw2_syllabic',
+        'SW3.sw_syllabic sw3_syllabic',
+        'SW4.sw_syllabic sw4_syllabic',
+        'SW1.sw_syllabic_len sw1_syllabic_len',
+        'SW2.sw_syllabic_len sw2_syllabic_len',
+        'SW3.sw_syllabic_len sw3_syllabic_len',
+        'SW4.sw_syllabic_len sw4_syllabic_len',
+        'SW1.frequency_in_snc sw1_frequency_in_snc',
+        'SW2.frequency_in_snc sw2_frequency_in_snc',
+        'SW3.frequency_in_snc sw3_frequency_in_snc',
+        'SW4.frequency_in_snc sw4_frequency_in_snc',
+
+        'GS.type_of_splinter gs_name',
+        'GS.sw1_splinter gs_sw1_splinter',
+        'GS.sw2_splinter gs_sw2_splinter',
+        'GS.sw3_splinter gs_sw3_splinter',
+        'GS.sw4_splinter gs_sw4_splinter',
+        'GS.sw1_splinter_len gs_sw1_splinter_len',
+        'GS.sw2_splinter_len gs_sw2_splinter_len',
+        'GS.sw3_splinter_len gs_sw3_splinter_len',
+        'GS.sw4_splinter_len gs_sw4_splinter_len',
+        # 'GS.sw1_splinter_len / SW1.sw_graphic_len gs_sw1_splinter_len_to_sw_len',
+        # 'GS.sw2_splinter_len / SW2.sw_graphic_len gs_sw2_splinter_len_to_sw_len',
+        # 'GS.sw3_splinter_len / SW3.sw_graphic_len gs_sw3_splinter_len_to_sw_len',
+        # 'GS.sw4_splinter_len / SW4.sw_graphic_len gs_sw4_splinter_len_to_sw_len',
+        # 'GS.sw1_splinter_len / nu_graphic_len gs_sw1_splinter_len_to_nu_len',
+        # 'GS.sw2_splinter_len / nu_graphic_len gs_sw2_splinter_len_to_nu_len',
+        # 'GS.sw3_splinter_len / nu_graphic_len gs_sw3_splinter_len_to_nu_len',
+        # 'GS.sw4_splinter_len / nu_graphic_len gs_sw4_splinter_len_to_nu_len',
+
+        'GM.type_of_splinter gm_name',
+        'GM.sw1_splinter gm_sw1_splinter',
+        'GM.sw2_splinter gm_sw2_splinter',
+        'GM.sw3_splinter gm_sw3_splinter',
+        'GM.sw4_splinter gm_sw4_splinter',
+        'GM.sw1_splinter_len gm_sw1_splinter_len',
+        'GM.sw2_splinter_len gm_sw2_splinter_len',
+        'GM.sw3_splinter_len gm_sw3_splinter_len',
+        'GM.sw4_splinter_len gm_sw4_splinter_len',
+        # 'GM.sw1_splinter_len / SW1.sw_graphic_len gm_sw1_splinter_len_to_sw_len',
+        # 'GM.sw2_splinter_len / SW2.sw_graphic_len gm_sw2_splinter_len_to_sw_len',
+        # 'GM.sw3_splinter_len / SW3.sw_graphic_len gm_sw3_splinter_len_to_sw_len',
+        # 'GM.sw4_splinter_len / SW4.sw_graphic_len gm_sw4_splinter_len_to_sw_len',
+        # 'GM.sw1_splinter_len / nu_graphic_len gm_sw1_splinter_len_to_nu_len',
+        # 'GM.sw2_splinter_len / nu_graphic_len gm_sw2_splinter_len_to_nu_len',
+        # 'GM.sw3_splinter_len / nu_graphic_len gm_sw3_splinter_len_to_nu_len',
+        # 'GM.sw4_splinter_len / nu_graphic_len gm_sw4_splinter_len_to_nu_len',
+
+        'PS.type_of_splinter ps_name',
+        'PS.sw1_splinter ps_sw1_splinter',
+        'PS.sw2_splinter ps_sw2_splinter',
+        'PS.sw3_splinter ps_sw3_splinter',
+        'PS.sw4_splinter ps_sw4_splinter',
+        'PS.sw1_splinter_len ps_sw1_splinter_len',
+        'PS.sw2_splinter_len ps_sw2_splinter_len',
+        'PS.sw3_splinter_len ps_sw3_splinter_len',
+        'PS.sw4_splinter_len ps_sw4_splinter_len',
+        # 'PS.sw1_splinter_len / SW1.sw_phonetic_len ps_sw1_splinter_len_to_sw_len',
+        # 'PS.sw2_splinter_len / SW2.sw_phonetic_len ps_sw2_splinter_len_to_sw_len',
+        # 'PS.sw3_splinter_len / SW3.sw_phonetic_len ps_sw3_splinter_len_to_sw_len',
+        # 'PS.sw4_splinter_len / SW4.sw_phonetic_len ps_sw4_splinter_len_to_sw_len',
+        # 'PS.sw1_splinter_len / nu_phonetic_len ps_sw1_splinter_len_to_nu_len',
+        # 'PS.sw2_splinter_len / nu_phonetic_len ps_sw2_splinter_len_to_nu_len',
+        # 'PS.sw3_splinter_len / nu_phonetic_len ps_sw3_splinter_len_to_nu_len',
+        # 'PS.sw4_splinter_len / nu_phonetic_len ps_sw4_splinter_len_to_nu_len',
+
+        'PM.type_of_splinter pm_name',
+        'PM.sw1_splinter pm_sw1_splinter',
+        'PM.sw2_splinter pm_sw2_splinter',
+        'PM.sw3_splinter pm_sw3_splinter',
+        'PM.sw4_splinter pm_sw4_splinter',
+        'PM.sw1_splinter_len pm_sw1_splinter_len',
+        'PM.sw2_splinter_len pm_sw2_splinter_len',
+        'PM.sw3_splinter_len pm_sw3_splinter_len',
+        'PM.sw4_splinter_len pm_sw4_splinter_len',
+        # 'PM.sw1_splinter_len / SW1.sw_phonetic_len pm_sw1_splinter_len_to_sw_len',
+        # 'PM.sw2_splinter_len / SW2.sw_phonetic_len pm_sw2_splinter_len_to_sw_len',
+        # 'PM.sw3_splinter_len / SW3.sw_phonetic_len pm_sw3_splinter_len_to_sw_len',
+        # 'PM.sw4_splinter_len / SW4.sw_phonetic_len pm_sw4_splinter_len_to_sw_len',
+        # 'PM.sw1_splinter_len / nu_phonetic_len pm_sw1_splinter_len_to_nu_len',
+        # 'PM.sw2_splinter_len / nu_phonetic_len pm_sw2_splinter_len_to_nu_len',
+        # 'PM.sw3_splinter_len / nu_phonetic_len pm_sw3_splinter_len_to_nu_len',
+        # 'PM.sw4_splinter_len / nu_phonetic_len pm_sw4_splinter_len_to_nu_len',
+
+    )
 
 
 
+    _EXPORT_SELECT = """SELECT {} FROM naming_unit NU
+
+  LEFT JOIN image I
+    ON NU.image_id = I.image_id
+
+  LEFT JOIN source_word SW1
+    ON NU.first_language = SW1.first_language
+       AND NU.survey_language = SW1.survey_language
+       AND NU.sw1_graphic = SW1.sw_graphic
+  LEFT JOIN source_word SW2
+    ON NU.first_language = SW2.first_language
+       AND NU.survey_language = SW2.survey_language
+       AND NU.sw2_graphic = SW2.sw_graphic
+  LEFT JOIN source_word SW3
+    ON NU.first_language = SW3.first_language
+       AND NU.survey_language = SW3.survey_language
+       AND NU.sw3_graphic = SW3.sw_graphic
+  LEFT JOIN source_word SW4
+    ON NU.first_language = SW4.first_language
+       AND NU.survey_language = SW4.survey_language
+       AND NU.sw4_graphic = SW4.sw_graphic
+
+  LEFT JOIN splinter GS
+    ON NU.nu_graphic = GS.nu_graphic
+      AND NU.first_language = GS.first_language
+      AND NU.survey_language = GS.survey_language
+      AND NU.image_id = GS.image_id
+      AND GS.type_of_splinter = 'graphic strict'
+
+  LEFT JOIN splinter GM
+    ON NU.nu_graphic = GM.nu_graphic
+      AND NU.first_language = GM.first_language
+      AND NU.survey_language = GM.survey_language
+      AND NU.image_id = GM.image_id
+      AND GM.type_of_splinter = 'graphic modified'
+
+  LEFT JOIN splinter PS
+    ON NU.nu_graphic = PS.nu_graphic
+      AND NU.first_language = PS.first_language
+      AND NU.survey_language = PS.survey_language
+      AND NU.image_id = PS.image_id
+      AND PS.type_of_splinter = 'phonetic strict'
+
+  LEFT JOIN splinter PM
+    ON NU.nu_graphic = PM.nu_graphic
+      AND NU.first_language = PM.first_language
+      AND NU.survey_language = PM.survey_language
+      AND NU.image_id = PM.image_id
+      AND PM.type_of_splinter = 'phonetic modified';
+""".format(
+        ', '.join(__SELECT_FIELDS)
+    )
+
+    __PATTERN_ALIAS = re.compile(r'.* +([^ ]+)')
+    __PATTERN_FROM_TABLE = re.compile(r'(.*\.)(.*)')
+
+    def __init__(self, wb, conn):
+        super().__init__(wb, conn)
+        self._FIELDS = tuple(self.__select_field_to_field(x) for x in self.__SELECT_FIELDS)
+
+    @classmethod
+    def __select_field_to_field(cls, x):
+        m = cls.__PATTERN_ALIAS.fullmatch(x)
+        if m:
+            return m.group(1)
+        m = cls.__PATTERN_FROM_TABLE.fullmatch(x)
+        if m:
+            return m.group(2)
+        return x
