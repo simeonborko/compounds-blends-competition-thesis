@@ -1,4 +1,7 @@
+from abc import ABC, ABCMeta, abstractmethod
 import sys
+from collections import namedtuple
+
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 from pymysql.cursors import DictCursor
@@ -8,36 +11,21 @@ import configuration
 from tools import sk, en
 
 
-class Table:
+class TableLike(ABC):
 
     _NAME = None
     _FIELDS = None
     _PRIMARY = None  # pocet stlpcov zo zaciatku
-    _ALLOWED_TO_GENERATE = None
-    _GENERATE_SELECT = None
-    _INTEGRITY_SELECT = None
+    _EXPORT_SELECT = None
 
-    __REDFILL = PatternFill("solid", fgColor="FF0000")
-    __YELLOWFILL = PatternFill("solid", fgColor="FFFF00")
+    _REDFILL = PatternFill("solid", fgColor="FF7575")
+    _YELLOWFILL = PatternFill("solid", fgColor="FFFC75")
+
+    ExecuteResult = namedtuple('ExecuteResult', ['cursor', 'result'])
 
     def __init__(self, wb: Workbook, conn):
-        self.__wb = wb
+        self._wb = wb
         self.__conn = conn
-
-    def __select_cursor(self):
-        c = self.__conn.cursor()
-        c.execute("SELECT {} FROM {}".format(','.join(self._FIELDS), self._NAME))
-        return c
-
-    def __update(self, datarow):
-        query = "UPDATE {} SET {} WHERE {}".format(
-            self._NAME,
-            ', '.join(f + " = %s" for f in self._FIELDS[self._PRIMARY:]),
-            ' AND '.join(f + " = %s" for f in self._FIELDS[:self._PRIMARY])
-        )
-        data = datarow[self._PRIMARY:] + datarow[:self._PRIMARY]
-        c = self.__conn.cursor()
-        c.execute(query, data)
 
     def __add_header(self, sheet):
         sheet.append(self._FIELDS)
@@ -45,29 +33,124 @@ class Table:
         for i in range(self._PRIMARY):
             sheet.cell(row=1, column=i + 1).font = Font(bold=True, italic=True)
 
-    def create_sheet(self):
-        if self._NAME in self.__wb.sheetnames:
-            raise Exception('Harok s nazvom {} uz existuje'.format(self._NAME))
-        sheet = self.__wb.create_sheet(self._NAME)
+    def _execute(self, *args, **kwargs) -> ExecuteResult:
+        c = self.__conn.cursor(**kwargs)
+        res = c.execute(*args) or 0
+        return self.ExecuteResult(c, res)
+
+    def _executemany(self, *args, **kwargs) -> ExecuteResult:
+        c = self.__conn.cursor(**kwargs)
+        res = c.executemany(*args) or 0
+        return self.ExecuteResult(c, res)
+
+    @abstractmethod
+    def _sync(self, vals_gen):
+        """
+        Synchronizuje dane riadky.
+        :param vals_gen: generator na dvojice (zoznam hodnot v DB, zoznam Cell v SHEETE)
+        """
+        pass
+
+    def create_sheet(self) -> bool:
+        if self._NAME in self._wb.sheetnames:
+            return False
+
+        sheet = self._wb.create_sheet(self._NAME)
 
         # nadpisy
         self.__add_header(sheet)
 
         # data
-        for row in self.__select_cursor():
+        for row in self._execute(self._EXPORT_SELECT).cursor:
             sheet.append(row)
 
-    @classmethod
-    def primary_fields(cls): return cls._FIELDS[:cls._PRIMARY]
+        return True
+
+    def sync(self):
+        # ziskat zaznamy z DB
+        db_dict = {dbvals[:self._PRIMARY]: dbvals for dbvals in self._execute(self._EXPORT_SELECT).cursor}
+
+        # ziskat zaznamy zo SHEETU
+        sheet = self._wb[self._NAME]
+        sheet_dict = {
+            tuple(cell.value for cell in rows[:self._PRIMARY]): rows
+            for rows in sheet.iter_rows(min_row=2)
+        }
+
+        # porovnat mnoziny klucov
+        keys_db_only = db_dict.keys() - sheet_dict.keys()
+        keys_sheet_only = sheet_dict.keys() - db_dict.keys()
+        keys_both = db_dict.keys() & sheet_dict.keys()
+
+        # co su iba v DB, pridat zlto
+        if len(keys_db_only) > 0:
+            starting_row = sheet.max_row + 1
+            for key in keys_db_only:
+                sheet.append(db_dict[key])
+            for row in sheet.iter_rows(min_row=starting_row):
+                for cell in row:
+                    cell.fill = self._YELLOWFILL
+
+        # co su iba v SHEET, ofarbit cerveno
+        for key in keys_sheet_only:
+            for cell in sheet_dict[key]:
+                cell.fill = self._REDFILL
+
+        # co su aj aj, synchronizovat, zafarbit zlto zmenene
+        self._sync((db_dict[k], sheet_dict[k]) for k in keys_both)
 
     @classmethod
-    def __split_fields(cls) -> (tuple, tuple):
+    def primary_fields(cls):
+        return cls._FIELDS[:cls._PRIMARY]
+
+    @classmethod
+    def name(cls) -> str: return cls._NAME
+
+
+class StaticView(TableLike):
+
+    def _sync(self, vals_gen):
+        """Nahradi hodnoty v SHEETE hodnotami z DB"""
+        for db_values, sheet_cells in vals_gen:
+            for value, cell in zip(db_values, sheet_cells):
+                if value and cell.value != value:
+                    cell.value = value
+                    cell.fill = self._YELLOWFILL
+
+
+class EditableTableLike(TableLike):
+
+    _ALLOWED_TO_GENERATE = None
+
+    def _sync(self, vals_gen):
+        editable, generated = self._split_fields()
+
+        for db_values, sheet_cells in vals_gen:
+
+            modified = False
+            for i in editable:
+                if db_values[i] != sheet_cells[i].value:
+                    db_values[i] = sheet_cells[i].value
+            if modified:
+                self._update(db_values)
+
+            for i in generated:
+                if db_values[i] != sheet_cells[i].value:
+                    sheet_cells[i].value = db_values[i]
+                    sheet_cells[i].fill = self._YELLOWFILL
+
+    @abstractmethod
+    def _update(self, datarow):
+        pass
+
+    @classmethod
+    def _split_fields(cls) -> (tuple, tuple):
         """Rozdeli stlpce podla toho, ci su editovatelne alebo generovane"""
         editable = []
         generated = []
         for i, field in enumerate(cls._FIELDS[cls._PRIMARY:], cls._PRIMARY):
             if field[:2] == 'G_' and field[-8:] != '__ignore' or \
-               cls._ALLOWED_TO_GENERATE is not None and field in cls._ALLOWED_TO_GENERATE:
+                    cls._ALLOWED_TO_GENERATE is not None and field in cls._ALLOWED_TO_GENERATE:
                 generated.append(i)
             else:
                 editable.append(i)
@@ -75,61 +158,38 @@ class Table:
 
     @classmethod
     def generated_fields(cls) -> tuple:
-        return tuple(cls._FIELDS[i] for i in cls.__split_fields()[1])
+        return tuple(cls._FIELDS[i] for i in cls._split_fields()[1])
 
-    def sync(self):
 
-        db = {dbvals[:self._PRIMARY]: list(dbvals) for dbvals in self.__select_cursor()}
-        new_db_keys = set(db.keys())
-        editable, generated = self.__split_fields()
+class Table(EditableTableLike, metaclass=ABCMeta):
 
-        sheet = self.__wb[self._NAME]
-        for excelrow in sheet.iter_rows(min_row=2):
-            excelvals = tuple(cell.value for cell in excelrow)
-            key = excelvals[:self._PRIMARY]
+    # select iba na tie riadky, ktore potrebuju byt generovane
+    _GENERATE_SELECT = None
 
-            if key not in db:
-                print('Harok: {}, riadok: {}. Riadok nenajdeny v databaze.'.format(self._NAME, str(key)))
-                for cell in excelrow:
-                    cell.fill = self.__REDFILL
-                continue
+    # select na riadky, ake primarne kluce maju byt v danej tabulke
+    _INTEGRITY_SELECT = None
 
-            dbentry = db[key]
-            new_db_keys.remove(key)
+    def __init__(self, wb: Workbook, conn):
+        super().__init__(wb, conn)
+        self._GENERATE_SELECT = "SELECT {} FROM {}".format(','.join(self._FIELDS), self._NAME)
 
-            # ktore su upravene v tabulke, zmenime aj v databaze
-            dbentry_modified = False
-            for i in editable:
-                if excelvals[i] != dbentry[i]:
-                    dbentry[i] = excelvals[i]
-                    dbentry_modified = True
-            if dbentry_modified:
-                self.__update(dbentry)
-
-            # ktore su nanovo vygenerovane v databaze, zmenime v tabulke
-            for i in generated:
-                if excelvals[i] != dbentry[i]:
-                    excelrow[i].value = dbentry[i]
-                    excelrow[i].fill = self.__YELLOWFILL
-
-        color_from_row = None
-        # ak su nejake nove riadky v db, vypisat
-        for key in new_db_keys:
-            sheet.append(db[key])
-            if color_from_row is None:
-                color_from_row = sheet.max_row
-
-        if color_from_row is not None:
-            for row in sheet.iter_rows(min_row=color_from_row):
-                for cell in row:
-                    cell.fill = self.__YELLOWFILL
-
-    @classmethod
-    def name(cls) -> str: return cls._NAME
+    def _update(self, datarow):
+        query = "UPDATE {} SET {} WHERE {}".format(
+            self._NAME,
+            ', '.join(f + " = %s" for f in self._FIELDS[self._PRIMARY:]),
+            ' AND '.join(f + " = %s" for f in self._FIELDS[:self._PRIMARY])
+        )
+        data = datarow[self._PRIMARY:] + datarow[:self._PRIMARY]
+        self._execute(query, data)
 
     def _generate(self, force: bool, cls) -> int:
-        c = self.__conn.cursor(cursor=DictCursor)
-        c.execute("SELECT * FROM {}".format(self._NAME) if force else self._GENERATE_SELECT)
+
+        # TODO: chcelo by to nepouzivat dict, ale named tuple
+
+        c = self._execute(
+            "SELECT * FROM {}".format(self._NAME) if force else self._GENERATE_SELECT,
+            cursor=DictCursor
+        ).cursor
 
         args = []
 
@@ -147,8 +207,7 @@ class Table:
                 " AND ".join("{0}=%({0})s".format(p) for p in self.primary_fields())
             )
 
-            c = self.__conn.cursor()
-            affected = c.executemany(query, args)
+            affected = self._executemany(query, args, result=True).result
 
             if len(args) != affected:
                 print("Pocet args: {}, pocet affected: {}".format(len(args), affected), file=sys.stderr)
@@ -159,19 +218,17 @@ class Table:
             return 0
 
     def integrity_add(self) -> int:
-        c = self.__conn.cursor()
-        added = c.execute(
+        return self._execute(
             "INSERT IGNORE INTO {} ({}) {}".format(
                 self._NAME,
                 ', '.join(self.primary_fields()),
                 self._INTEGRITY_SELECT
-            )
-        )
-        return added
+            ),
+            result=True
+        ).result
 
     def integrity_junk(self) -> int:
-        c = self.__conn.cursor()
-        n = c.execute(
+        exres = self._execute(
             "SELECT {} FROM {} TBL LEFT JOIN ({}) TMP ON {} WHERE {}".format(
                 ', '.join('TBL.' + field for field in self._FIELDS),
                 self._NAME,
@@ -180,33 +237,35 @@ class Table:
                 ' AND '.join('TMP.{} IS NULL'.format(p) for p in self.primary_fields())
             )
         )
-        if not n:
+        if not exres.result:
             return 0
 
         # vytvorit harok
         sheetname = 'junk {}'.format(self._NAME)
-        if sheetname not in self.__wb.sheetnames:
-            sheet = self.__wb.create_sheet(sheetname)
+        if sheetname not in self._wb.sheetnames:
+            sheet = self._wb.create_sheet(sheetname)
             self.__add_header(sheet)
         else:
-            sheet = self.__wb[sheetname]
+            sheet = self._wb[sheetname]
 
         # pridat riadky a ulozit kluce
         keys = []
-        for row in c:
+        for row in exres.cursor:
             keys.append(row[:self._PRIMARY])
             sheet.append(row)
 
-        c = self.__conn.cursor()
-        n = c.executemany(
+        exres = self._executemany(
             """DELETE FROM {} WHERE {}""".format(
                 self._NAME,
                 ' AND '.join('{} = %s'.format(p) for p in self.primary_fields())
             ),
             keys
         )
+        return exres.result
 
-        return n or 0
+
+class SplinterView(EditableTableLike):
+    pass
 
 
 class ImageTable(Table):
@@ -488,3 +547,8 @@ class NamingUnit(Entity):
         self.__nu_graphic_len()
         self.__nu_phonetic_len()
         self.__nu_syllabic_len()
+
+
+
+
+
