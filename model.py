@@ -125,20 +125,20 @@ class StaticView(TableLike):
 class EditableTableLike(TableLike):
 
     _ALLOWED_TO_GENERATE = None
+    _EDITABLE = None  # indexy stlpcov, ktore sa mozu upravovat v SHEETE
+    _GENERATED = None  # indexy stplcov, ktore su generovane v DB
 
     def _sync(self, vals_gen):
-        editable, generated = self._split_fields()
-
         for db_values, sheet_cells in vals_gen:
 
             modified = False
-            for i in editable:
+            for i in self._EDITABLE:
                 if db_values[i] != sheet_cells[i].value:
                     db_values[i] = sheet_cells[i].value
             if modified:
                 self._update(db_values)
 
-            for i in generated:
+            for i in self._GENERATED:
                 if db_values[i] != sheet_cells[i].value:
                     sheet_cells[i].value = db_values[i]
                     sheet_cells[i].fill = self._YELLOWFILL
@@ -147,23 +147,8 @@ class EditableTableLike(TableLike):
     def _update(self, datarow):
         pass
 
-    @classmethod
-    def _split_fields(cls) -> (tuple, tuple):
-        """Rozdeli stlpce podla toho, ci su editovatelne alebo generovane"""
-        editable = []
-        generated = []
-        for i, field in enumerate(cls._FIELDS[cls._PRIMARY:], cls._PRIMARY):
-            if field[:2] == 'G_' and field[-8:] != '__ignore' or \
-                    cls._ALLOWED_TO_GENERATE is not None and field in cls._ALLOWED_TO_GENERATE:
-                generated.append(i)
-            else:
-                editable.append(i)
-        return tuple(editable), tuple(generated)
-
-    @classmethod
-    def generated_fields(cls) -> tuple:
-        return tuple(cls._FIELDS[i] for i in cls._split_fields()[1])
-
+    def generated_fields(self) -> tuple:
+        return tuple(self._FIELDS[i] for i in self._GENERATED)
 
 class Table(EditableTableLike, metaclass=ABCMeta):
 
@@ -176,6 +161,19 @@ class Table(EditableTableLike, metaclass=ABCMeta):
     def __init__(self, wb: Workbook, conn):
         super().__init__(wb, conn)
         self._EXPORT_SELECT = "SELECT {} FROM {}".format(','.join(self._FIELDS), self._NAME)
+        self._EDITABLE, self._GENERATED = self.__split_fields()
+
+    def __split_fields(self):
+        """Rozdeli stlpce podla toho, ci su editovatelne alebo generovane, nastavi _GENERATED, _EDITABLE"""
+        editable = []
+        generated = []
+        for i, field in enumerate(self._FIELDS[self._PRIMARY:], self._PRIMARY):
+            if field[:2] == 'G_' and field[-8:] != '__ignore' or \
+                    self._ALLOWED_TO_GENERATE is not None and field in self._ALLOWED_TO_GENERATE:
+                generated.append(i)
+            else:
+                editable.append(i)
+        return tuple(editable), tuple(generated)
 
     def _update(self, datarow):
         query = "UPDATE {} SET {} WHERE {}".format(
@@ -198,7 +196,7 @@ class Table(EditableTableLike, metaclass=ABCMeta):
         args = []
 
         for data in c:
-            entity = cls(data)
+            entity = cls(self, data)
             entity.generate()
             if entity.modified:
                 args.append(entity.data)
@@ -392,18 +390,16 @@ class SplinterTable(Table):
 
 class Entity:
 
-    _TABLE_CLS = None
-
-    def __init__(self, data: dict):
+    def __init__(self, table, data: dict):
+        self.__table = table
         self.__data = data
         self.__modified = False
-        self.__primary_fields = self._TABLE_CLS.primary_fields()
 
     def __getitem__(self, item):
         return self.__data[item]
 
     def __setitem__(self, key, value):
-        if key in self.__primary_fields:
+        if key in self.__table.primary_fields():
             raise Exception('Hodnota v stlpci patriacom do primarneho kluca nemoze byt zmenena')
         if self.__data[key] != value:
             self.__data[key] = value
@@ -412,7 +408,7 @@ class Entity:
     @property
     def data(self) -> dict:
         """Vrati data, ktore mozu byt generovane alebo patria do primarneho kluca"""
-        fields = self.__primary_fields + self._TABLE_CLS.generated_fields()
+        fields = self.__table.primary_fields() + self.__table.generated_fields()
         return {k: v for k, v in self.__data.items() if k in fields}
 
     @property
@@ -429,8 +425,8 @@ class SourceWord(Entity):
     _TABLE_CLS = SourceWordTable
     __MATCHER = DbMatcher()
 
-    def __init__(self, data: dict):
-        super().__init__(data)
+    def __init__(self, table, data: dict):
+        super().__init__(table, data)
         self.__lang = self['survey_language']
 
     def __sw_syllabic(self):
@@ -483,8 +479,8 @@ class NamingUnit(Entity):
     _TABLE_CLS = NamingUnitTable
     __MATCHER = DbMatcher()
 
-    def __init__(self, data: dict):
-        super().__init__(data)
+    def __init__(self, table, data: dict):
+        super().__init__(table, data)
         self.__lang = self['survey_language']
 
     def __nu_syllabic(self):
