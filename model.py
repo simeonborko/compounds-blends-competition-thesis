@@ -100,15 +100,14 @@ class TableLike(ABC):
         # co su aj aj, synchronizovat, zafarbit zlto zmenene
         self._sync((db_dict[k], sheet_dict[k]) for k in keys_both)
 
-    @classmethod
-    def primary_fields(cls):
-        return cls._FIELDS[:cls._PRIMARY]
+    @property
+    def primary_fields(self) -> tuple: return self._FIELDS[:self._PRIMARY]
 
     @classmethod
     def name(cls) -> str: return cls._NAME
 
-    @classmethod
-    def fields(cls) -> tuple: return cls._FIELDS
+    @property
+    def fields(self) -> tuple: return self._FIELDS
 
 
 class StaticView(TableLike):
@@ -124,9 +123,32 @@ class StaticView(TableLike):
 
 class EditableTableLike(TableLike):
 
-    _ALLOWED_TO_GENERATE = None
-    _EDITABLE = None  # indexy stlpcov, ktore sa mozu upravovat v SHEETE
-    _GENERATED = None  # indexy stplcov, ktore su generovane v DB
+    _EXCLUDE_EDITABLE = None
+    _INCLUDE_EDITABLE = None
+    __EDITABLE = None  # indexy stlpcov, ktore sa mozu upravovat v SHEETE
+    __GENERATED = None  # indexy stplcov, ktore su generovane v DB
+
+    def __init__(self, wb: Workbook, conn):
+        super().__init__(wb, conn)
+        self._EDITABLE, self._GENERATED = self.__split_fields()
+
+    def __looks_like_generated(self, field) -> bool:
+        return field[:2] == 'G_' and field[-8:] != '__ignore'
+
+    def __is_generated(self, field):
+        if self._EXCLUDE_EDITABLE and field in self._EXCLUDE_EDITABLE:
+            return True
+        elif self._INCLUDE_EDITABLE and field in self._INCLUDE_EDITABLE:
+            return False
+        else:
+            return self._looks_like_generated(field)
+
+    def __split_fields(self):
+        editable = []
+        generated = []
+        for i, field in enumerate(self._FIELDS[self._PRIMARY:], self._PRIMARY):
+            (generated if self.__is_generated(field) else editable).append(i)
+        return tuple(editable), tuple(generated)
 
     def _sync(self, vals_gen):
         for db_values, sheet_cells in vals_gen:
@@ -147,8 +169,12 @@ class EditableTableLike(TableLike):
     def _update(self, datarow):
         pass
 
-    def generated_fields(self) -> tuple:
-        return tuple(self._FIELDS[i] for i in self._GENERATED)
+    @property
+    def generated_fields(self) -> tuple: return self.__GENERATED
+
+    @property
+    def editable_fields(self) -> tuple: return self.__EDITABLE
+
 
 class Table(EditableTableLike, metaclass=ABCMeta):
 
@@ -161,19 +187,6 @@ class Table(EditableTableLike, metaclass=ABCMeta):
     def __init__(self, wb: Workbook, conn):
         super().__init__(wb, conn)
         self._EXPORT_SELECT = "SELECT {} FROM {}".format(','.join(self._FIELDS), self._NAME)
-        self._EDITABLE, self._GENERATED = self.__split_fields()
-
-    def __split_fields(self):
-        """Rozdeli stlpce podla toho, ci su editovatelne alebo generovane, nastavi _GENERATED, _EDITABLE"""
-        editable = []
-        generated = []
-        for i, field in enumerate(self._FIELDS[self._PRIMARY:], self._PRIMARY):
-            if field[:2] == 'G_' and field[-8:] != '__ignore' or \
-                    self._ALLOWED_TO_GENERATE is not None and field in self._ALLOWED_TO_GENERATE:
-                generated.append(i)
-            else:
-                editable.append(i)
-        return tuple(editable), tuple(generated)
 
     def _update(self, datarow):
         query = "UPDATE {} SET {} WHERE {}".format(
@@ -205,8 +218,8 @@ class Table(EditableTableLike, metaclass=ABCMeta):
 
             query = "UPDATE {} SET {} WHERE {}".format(
                 self._NAME,
-                ", ".join("{0}=%({0})s".format(g) for g in self.generated_fields()),
-                " AND ".join("{0}=%({0})s".format(p) for p in self.primary_fields())
+                ", ".join("{0}=%({0})s".format(g) for g in self.generated_fields),
+                " AND ".join("{0}=%({0})s".format(p) for p in self.primary_fields)
             )
 
             affected = self._executemany(query, args, result=True).result
@@ -223,7 +236,7 @@ class Table(EditableTableLike, metaclass=ABCMeta):
         return self._execute(
             "INSERT IGNORE INTO {} ({}) {}".format(
                 self._NAME,
-                ', '.join(self.primary_fields()),
+                ', '.join(self.primary_fields),
                 self._INTEGRITY_SELECT
             ),
             result=True
@@ -235,8 +248,8 @@ class Table(EditableTableLike, metaclass=ABCMeta):
                 ', '.join('TBL.' + field for field in self._FIELDS),
                 self._NAME,
                 self._INTEGRITY_SELECT,
-                ' AND '.join('TBL.{0} = TMP.{0}'.format(p) for p in self.primary_fields()),
-                ' AND '.join('TMP.{} IS NULL'.format(p) for p in self.primary_fields())
+                ' AND '.join('TBL.{0} = TMP.{0}'.format(p) for p in self.primary_fields),
+                ' AND '.join('TMP.{} IS NULL'.format(p) for p in self.primary_fields)
             )
         )
         if not exres.result:
@@ -259,7 +272,7 @@ class Table(EditableTableLike, metaclass=ABCMeta):
         exres = self._executemany(
             """DELETE FROM {} WHERE {}""".format(
                 self._NAME,
-                ' AND '.join('{} = %s'.format(p) for p in self.primary_fields())
+                ' AND '.join('{} = %s'.format(p) for p in self.primary_fields)
             ),
             keys
         )
@@ -335,7 +348,7 @@ class SourceWordTable(Table):
                'sw_phonetic_len', 'G_sw_phonetic_len',
                'sw_syllabic_len', 'G_sw_syllabic_len', 'frequency_in_snc')
     _PRIMARY = 3
-    _ALLOWED_TO_GENERATE = ('frequency_in_snc',)
+    _EXCLUDE_EDITABLE = {'frequency_in_snc'}
     _GENERATE_SELECT = """select * from {} where
   survey_language='SK' and G_sw_syllabic is null
   or G_sw_graphic_len is null
@@ -399,7 +412,7 @@ class Entity:
         return self.__data[item]
 
     def __setitem__(self, key, value):
-        if key in self.__table.primary_fields():
+        if key in self.__table.primary_fields:
             raise Exception('Hodnota v stlpci patriacom do primarneho kluca nemoze byt zmenena')
         if self.__data[key] != value:
             self.__data[key] = value
@@ -408,7 +421,7 @@ class Entity:
     @property
     def data(self) -> dict:
         """Vrati data, ktore mozu byt generovane alebo patria do primarneho kluca"""
-        fields = self.__table.primary_fields() + self.__table.generated_fields()
+        fields = self.__table.primary_fields + self.__table.generated_fields
         return {k: v for k, v in self.__data.items() if k in fields}
 
     @property
@@ -549,6 +562,7 @@ class NamingUnit(Entity):
 class SplinterView(EditableTableLike):
 
     # TODO skontrolovat, ci pocet riadkov v tomto selekte je rovnaky ako pocet riadkov v naming_unit
+    # TODO teda primarny kluc naming unit je primarny kluc tohto viewu
 
     _NAME = 'splinter_view'
     __PRIMARY_SELECT_FIELDS = (
@@ -742,6 +756,22 @@ class SplinterView(EditableTableLike):
 """.format(
         ', '.join(__SELECT_FIELDS)
     )
+
+    _EXCLUDE_EDITABLE = {
+        'sw1_graphic',
+        'sw2_graphic',
+        'sw3_graphic',
+        'sw4_graphic',
+        'gs_name',
+        'gm_name',
+        'ps_name',
+        'pm_name',
+        'sw1_frequency_in_snc',
+        'sw2_frequency_in_snc',
+        'sw3_frequency_in_snc',
+        'sw4_frequency_in_snc',
+    }
+
 
     __PATTERN_ALIAS = re.compile(r'.* +([^ ]+)')
     __PATTERN_FROM_TABLE = re.compile(r'(.*\.)(.*)')
