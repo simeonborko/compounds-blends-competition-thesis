@@ -31,8 +31,13 @@ class TableLike(ABC):
     def __add_header(self, sheet):
         sheet.append(self._FIELDS)
         sheet.row_dimensions[1].font = Font(bold=True)
-        for i in range(self._PRIMARY):
+        for i in self._emphasized_columns:
             sheet.cell(row=1, column=i + 1).font = Font(bold=True, italic=True)
+
+    @property
+    def _emphasized_columns(self):
+        """Vrati indexy zvyraznenych stlpcov (ktore nemaju byt upravovane)."""
+        return range(self._PRIMARY)
 
     def _execute(self, *args, **kwargs) -> ExecuteResult:
         c = self.__conn.cursor(**kwargs)
@@ -45,7 +50,7 @@ class TableLike(ABC):
         return self.ExecuteResult(c, res)
 
     @abstractmethod
-    def _sync(self, vals_gen):
+    def _sync(self, vals_gen) -> bool:
         """
         Synchronizuje dane riadky.
         :param vals_gen: generator na dvojice (zoznam hodnot v DB, zoznam Cell v SHEETE)
@@ -67,9 +72,9 @@ class TableLike(ABC):
 
         return True
 
-    def sync(self):
+    def sync(self) -> bool:
         # ziskat zaznamy z DB
-        db_dict = {dbvals[:self._PRIMARY]: dbvals for dbvals in self._execute(self._EXPORT_SELECT).cursor}
+        db_dict = {dbvals[:self._PRIMARY]: list(dbvals) for dbvals in self._execute(self._EXPORT_SELECT).cursor}
 
         # ziskat zaznamy zo SHEETU
         sheet = self._wb[self._NAME]
@@ -83,8 +88,11 @@ class TableLike(ABC):
         keys_sheet_only = sheet_dict.keys() - db_dict.keys()
         keys_both = db_dict.keys() & sheet_dict.keys()
 
+        modified = False
+
         # co su iba v DB, pridat zlto
         if len(keys_db_only) > 0:
+            modified = True
             starting_row = sheet.max_row + 1
             for key in keys_db_only:
                 sheet.append(db_dict[key])
@@ -93,12 +101,14 @@ class TableLike(ABC):
                     cell.fill = self._YELLOWFILL
 
         # co su iba v SHEET, ofarbit cerveno
-        for key in keys_sheet_only:
-            for cell in sheet_dict[key]:
-                cell.fill = self._REDFILL
+        if len(keys_sheet_only) > 0:
+            modified = True
+            for key in keys_sheet_only:
+                for cell in sheet_dict[key]:
+                    cell.fill = self._REDFILL
 
         # co su aj aj, synchronizovat, zafarbit zlto zmenene
-        self._sync((db_dict[k], sheet_dict[k]) for k in keys_both)
+        return self._sync((db_dict[k], sheet_dict[k]) for k in keys_both) or modified
 
     @property
     def primary_fields(self) -> tuple: return self._FIELDS[:self._PRIMARY]
@@ -112,27 +122,33 @@ class TableLike(ABC):
 
 class StaticView(TableLike):
 
+    @property
+    def _emphasized_columns(self):
+        return range(len(self._FIELDS))
+
     def _sync(self, vals_gen):
         """Nahradi hodnoty v SHEETE hodnotami z DB"""
+        modified = False
         for db_values, sheet_cells in vals_gen:
             for value, cell in zip(db_values, sheet_cells):
                 if value and cell.value != value:
+                    modified = True
                     cell.value = value
                     cell.fill = self._YELLOWFILL
+        return modified
 
 
 class EditableTableLike(TableLike):
 
     _EXCLUDE_EDITABLE = None
     _INCLUDE_EDITABLE = None
-    __EDITABLE = None  # indexy stlpcov, ktore sa mozu upravovat v SHEETE
-    __GENERATED = None  # indexy stplcov, ktore su generovane v DB
 
     def __init__(self, wb: Workbook, conn):
         super().__init__(wb, conn)
-        self._EDITABLE, self._GENERATED = self.__split_fields()
+        self.__editable, self.__generated = self.__split_fields()
 
-    def __looks_like_generated(self, field) -> bool:
+    @staticmethod
+    def __looks_like_generated(field) -> bool:
         return field[:2] == 'G_' and field[-8:] != '__ignore'
 
     def __is_generated(self, field):
@@ -141,7 +157,7 @@ class EditableTableLike(TableLike):
         elif self._INCLUDE_EDITABLE and field in self._INCLUDE_EDITABLE:
             return False
         else:
-            return self._looks_like_generated(field)
+            return self.__looks_like_generated(field)
 
     def __split_fields(self):
         editable = []
@@ -150,30 +166,43 @@ class EditableTableLike(TableLike):
             (generated if self.__is_generated(field) else editable).append(i)
         return tuple(editable), tuple(generated)
 
+    @property
+    def _emphasized_columns(self):
+        return set(super()._emphasized_columns) | set(self.__generated)
+
     def _sync(self, vals_gen):
+        whole_modif = False
+
         for db_values, sheet_cells in vals_gen:
 
             modified = False
-            for i in self._EDITABLE:
+            for i in self.__editable:
                 if db_values[i] != sheet_cells[i].value:
                     db_values[i] = sheet_cells[i].value
+                    modified = True
+                    whole_modif = True
             if modified:
                 self._update(db_values)
 
-            for i in self._GENERATED:
+            for i in self.__generated:
                 if db_values[i] != sheet_cells[i].value:
                     sheet_cells[i].value = db_values[i]
                     sheet_cells[i].fill = self._YELLOWFILL
+                    whole_modif = True
+
+        return whole_modif
 
     @abstractmethod
     def _update(self, datarow):
+        """Aktualizuje data v DB podla `datarow`.
+        Neoveruje, ci sa nezmenili hodnoty v needitovatelnych stlpcoch; to musi zariadit volajuci."""
         pass
 
     @property
-    def generated_fields(self) -> tuple: return self.__GENERATED
+    def generated_fields(self) -> tuple: return self.__generated
 
     @property
-    def editable_fields(self) -> tuple: return self.__EDITABLE
+    def editable_fields(self) -> tuple: return self.__editable
 
 
 class Table(EditableTableLike, metaclass=ABCMeta):
@@ -184,15 +213,34 @@ class Table(EditableTableLike, metaclass=ABCMeta):
     # select na riadky, ake primarne kluce maju byt v danej tabulke
     _INTEGRITY_SELECT = None
 
-    def __init__(self, wb: Workbook, conn):
+    def __init__(self, wb: Workbook, conn, fields=None):
         super().__init__(wb, conn)
         self._EXPORT_SELECT = "SELECT {} FROM {}".format(','.join(self._FIELDS), self._NAME)
+        self.__field_mask = self.__create_field_mask(fields)
+
+    def __create_field_mask(self, fields) -> tuple:
+        """
+        Maska poli je n-tica indexov do _FIELDS.
+        Primarne polia zostanu vzdy zachovane.
+        :param nazvy poli, ktore sa maju zachovat; alebo None
+        :return maska poli
+        """
+        if fields is None:
+            return tuple(range(len(self._FIELDS)))
+
+        if tuple(fields[:self._PRIMARY]) != self.primary_fields:
+            raise Exception
+
+        fset = set(fields)
+        return tuple(idx for idx, field in enumerate(self._FIELDS) if field in fset)
 
     def _update(self, datarow):
+        if len(datarow) != len(self.__field_mask):
+            raise Exception
         query = "UPDATE {} SET {} WHERE {}".format(
             self._NAME,
-            ', '.join(f + " = %s" for f in self._FIELDS[self._PRIMARY:]),
-            ' AND '.join(f + " = %s" for f in self._FIELDS[:self._PRIMARY])
+            ', '.join(self._FIELDS[i] + " = %s" for i in self.__field_mask[self._PRIMARY:]),
+            ' AND '.join(f + " = %s" for f in self.primary_fields)
         )
         data = datarow[self._PRIMARY:] + datarow[:self._PRIMARY]
         self._execute(query, data)
@@ -380,7 +428,13 @@ class SourceWordTable(Table):
 
 class SplinterTable(Table):
     _NAME = 'splinter'
-    _FIELDS = ('nu_graphic', 'first_language', 'survey_language', 'image_id', 'type_of_splinter', 'sw1_splinter', 'sw2_splinter', 'sw3_splinter', 'sw4_splinter', 'sw1_splinter_len', 'sw2_splinter_len', 'sw3_splinter_len', 'sw4_splinter_len', 'G_sw1_splinter', 'G_sw1_splinter__ignore', 'G_sw2_splinter', 'G_sw2_splinter__ignore', 'G_sw3_splinter', 'G_sw3_splinter__ignore', 'G_sw4_splinter', 'G_sw4_splinter__ignore', 'G_sw1_splinter_len', 'G_sw1_splinter_len__ignore', 'G_sw2_splinter_len', 'G_sw2_splinter_len__ignore', 'G_sw3_splinter_len', 'G_sw3_splinter_len__ignore', 'G_sw4_splinter_len', 'G_sw4_splinter_len__ignore')
+    _FIELDS = ('nu_graphic', 'first_language', 'survey_language', 'image_id', 'type_of_splinter',
+               'sw1_splinter', 'sw2_splinter', 'sw3_splinter', 'sw4_splinter',
+               'sw1_splinter_len', 'sw2_splinter_len', 'sw3_splinter_len', 'sw4_splinter_len',
+               'G_sw1_splinter', 'G_sw1_splinter__ignore', 'G_sw2_splinter', 'G_sw2_splinter__ignore',
+               'G_sw3_splinter', 'G_sw3_splinter__ignore', 'G_sw4_splinter', 'G_sw4_splinter__ignore',
+               'G_sw1_splinter_len', 'G_sw1_splinter_len__ignore', 'G_sw2_splinter_len', 'G_sw2_splinter_len__ignore',
+               'G_sw3_splinter_len', 'G_sw3_splinter_len__ignore', 'G_sw4_splinter_len', 'G_sw4_splinter_len__ignore')
     _PRIMARY = 5
 
     _INTEGRITY_SELECT = "SELECT {} FROM naming_unit, ({}) T".format(
@@ -561,150 +615,138 @@ class NamingUnit(Entity):
 
 class SplinterView(EditableTableLike):
 
-    # TODO skontrolovat, ci pocet riadkov v tomto selekte je rovnaky ako pocet riadkov v naming_unit
-    # TODO teda primarny kluc naming unit je primarny kluc tohto viewu
-
     _NAME = 'splinter_view'
-    __PRIMARY_SELECT_FIELDS = (
-        'NU.nu_graphic',
-        'NU.first_language',
-        'NU.survey_language',
-        'I.image_id',
-    )
-    _PRIMARY = len(__PRIMARY_SELECT_FIELDS)
 
-    __SELECT_FIELDS = __PRIMARY_SELECT_FIELDS + (
+    _PRIMARY = 4
 
-        'I.sub_sem_cat',
-        'I.dom_sem_cat',
-        'I.sub_name',
-        'I.dom_name',
-        'I.sub_number',
-        'I.dom_number',
-        'I.half_number',
-        'I.sub_sub',
-
-        'nu_phonetic',
-        'nu_syllabic',
-        'nu_graphic_len',
-        'nu_phonetic_len',
-        'nu_syllabic_len',
+    _EXCLUDE_EDITABLE = {
         'sw1_graphic',
         'sw2_graphic',
         'sw3_graphic',
         'sw4_graphic',
-        'SW1.sw_word_class sw1_word_class',
-        'SW2.sw_word_class sw2_word_class',
-        'SW3.sw_word_class sw3_word_class',
-        'SW4.sw_word_class sw4_word_class',
+        'gs_name',
+        'gm_name',
+        'ps_name',
+        'pm_name',
+        'sw1_frequency_in_snc',
+        'sw2_frequency_in_snc',
+        'sw3_frequency_in_snc',
+        'sw4_frequency_in_snc',
+    }
 
-        'SW1.source_language sw1_source_language',
-        'SW2.source_language sw2_source_language',
-        'SW3.source_language sw3_source_language',
-        'SW4.source_language sw4_source_language',
+    __NU_FIELDS_ALL = __NU_FIELDS = (
+        'nu_graphic', 'first_language', 'survey_language', 'image_id',
+        'wf_process',
 
-        'SW1.sw_graphic_len sw1_graphic_len',
-        'SW2.sw_graphic_len sw2_graphic_len',
-        'SW3.sw_graphic_len sw3_graphic_len',
-        'SW4.sw_graphic_len sw4_graphic_len',
-        'SW1.sw_phonetic sw1_phonetic',
-        'SW2.sw_phonetic sw2_phonetic',
-        'SW3.sw_phonetic sw3_phonetic',
-        'SW4.sw_phonetic sw4_phonetic',
-        'SW1.sw_phonetic_len sw1_phonetic_len',
-        'SW2.sw_phonetic_len sw2_phonetic_len',
-        'SW3.sw_phonetic_len sw3_phonetic_len',
-        'SW4.sw_phonetic_len sw4_phonetic_len',
-        'SW1.sw_syllabic sw1_syllabic',
-        'SW2.sw_syllabic sw2_syllabic',
-        'SW3.sw_syllabic sw3_syllabic',
-        'SW4.sw_syllabic sw4_syllabic',
-        'SW1.sw_syllabic_len sw1_syllabic_len',
-        'SW2.sw_syllabic_len sw2_syllabic_len',
-        'SW3.sw_syllabic_len sw3_syllabic_len',
-        'SW4.sw_syllabic_len sw4_syllabic_len',
-        'SW1.frequency_in_snc sw1_frequency_in_snc',
-        'SW2.frequency_in_snc sw2_frequency_in_snc',
-        'SW3.frequency_in_snc sw3_frequency_in_snc',
-        'SW4.frequency_in_snc sw4_frequency_in_snc',
+        # 'sw1_graphic', 'sw2_graphic', 'sw3_graphic', 'sw4_graphic',
+        # 'sw1_headmod', 'sw2_headmod', 'sw3_headmod', 'sw4_headmod',
+        # 'sw1_subdom', 'sw2_subdom', 'sw3_subdom', 'sw4_subdom',
 
-        'GS.type_of_splinter gs_name',
-        'GS.sw1_splinter gs_sw1_splinter',
-        'GS.sw2_splinter gs_sw2_splinter',
-        'GS.sw3_splinter gs_sw3_splinter',
-        'GS.sw4_splinter gs_sw4_splinter',
-        'GS.sw1_splinter_len gs_sw1_splinter_len',
-        'GS.sw2_splinter_len gs_sw2_splinter_len',
-        'GS.sw3_splinter_len gs_sw3_splinter_len',
-        'GS.sw4_splinter_len gs_sw4_splinter_len',
-        # 'GS.sw1_splinter_len / SW1.sw_graphic_len gs_sw1_splinter_len_to_sw_len',
-        # 'GS.sw2_splinter_len / SW2.sw_graphic_len gs_sw2_splinter_len_to_sw_len',
-        # 'GS.sw3_splinter_len / SW3.sw_graphic_len gs_sw3_splinter_len_to_sw_len',
-        # 'GS.sw4_splinter_len / SW4.sw_graphic_len gs_sw4_splinter_len_to_sw_len',
-        # 'GS.sw1_splinter_len / nu_graphic_len gs_sw1_splinter_len_to_nu_len',
-        # 'GS.sw2_splinter_len / nu_graphic_len gs_sw2_splinter_len_to_nu_len',
-        # 'GS.sw3_splinter_len / nu_graphic_len gs_sw3_splinter_len_to_nu_len',
-        # 'GS.sw4_splinter_len / nu_graphic_len gs_sw4_splinter_len_to_nu_len',
-
-        'GM.type_of_splinter gm_name',
-        'GM.sw1_splinter gm_sw1_splinter',
-        'GM.sw2_splinter gm_sw2_splinter',
-        'GM.sw3_splinter gm_sw3_splinter',
-        'GM.sw4_splinter gm_sw4_splinter',
-        'GM.sw1_splinter_len gm_sw1_splinter_len',
-        'GM.sw2_splinter_len gm_sw2_splinter_len',
-        'GM.sw3_splinter_len gm_sw3_splinter_len',
-        'GM.sw4_splinter_len gm_sw4_splinter_len',
-        # 'GM.sw1_splinter_len / SW1.sw_graphic_len gm_sw1_splinter_len_to_sw_len',
-        # 'GM.sw2_splinter_len / SW2.sw_graphic_len gm_sw2_splinter_len_to_sw_len',
-        # 'GM.sw3_splinter_len / SW3.sw_graphic_len gm_sw3_splinter_len_to_sw_len',
-        # 'GM.sw4_splinter_len / SW4.sw_graphic_len gm_sw4_splinter_len_to_sw_len',
-        # 'GM.sw1_splinter_len / nu_graphic_len gm_sw1_splinter_len_to_nu_len',
-        # 'GM.sw2_splinter_len / nu_graphic_len gm_sw2_splinter_len_to_nu_len',
-        # 'GM.sw3_splinter_len / nu_graphic_len gm_sw3_splinter_len_to_nu_len',
-        # 'GM.sw4_splinter_len / nu_graphic_len gm_sw4_splinter_len_to_nu_len',
-
-        'PS.type_of_splinter ps_name',
-        'PS.sw1_splinter ps_sw1_splinter',
-        'PS.sw2_splinter ps_sw2_splinter',
-        'PS.sw3_splinter ps_sw3_splinter',
-        'PS.sw4_splinter ps_sw4_splinter',
-        'PS.sw1_splinter_len ps_sw1_splinter_len',
-        'PS.sw2_splinter_len ps_sw2_splinter_len',
-        'PS.sw3_splinter_len ps_sw3_splinter_len',
-        'PS.sw4_splinter_len ps_sw4_splinter_len',
-        # 'PS.sw1_splinter_len / SW1.sw_phonetic_len ps_sw1_splinter_len_to_sw_len',
-        # 'PS.sw2_splinter_len / SW2.sw_phonetic_len ps_sw2_splinter_len_to_sw_len',
-        # 'PS.sw3_splinter_len / SW3.sw_phonetic_len ps_sw3_splinter_len_to_sw_len',
-        # 'PS.sw4_splinter_len / SW4.sw_phonetic_len ps_sw4_splinter_len_to_sw_len',
-        # 'PS.sw1_splinter_len / nu_phonetic_len ps_sw1_splinter_len_to_nu_len',
-        # 'PS.sw2_splinter_len / nu_phonetic_len ps_sw2_splinter_len_to_nu_len',
-        # 'PS.sw3_splinter_len / nu_phonetic_len ps_sw3_splinter_len_to_nu_len',
-        # 'PS.sw4_splinter_len / nu_phonetic_len ps_sw4_splinter_len_to_nu_len',
-
-        'PM.type_of_splinter pm_name',
-        'PM.sw1_splinter pm_sw1_splinter',
-        'PM.sw2_splinter pm_sw2_splinter',
-        'PM.sw3_splinter pm_sw3_splinter',
-        'PM.sw4_splinter pm_sw4_splinter',
-        'PM.sw1_splinter_len pm_sw1_splinter_len',
-        'PM.sw2_splinter_len pm_sw2_splinter_len',
-        'PM.sw3_splinter_len pm_sw3_splinter_len',
-        'PM.sw4_splinter_len pm_sw4_splinter_len',
-        # 'PM.sw1_splinter_len / SW1.sw_phonetic_len pm_sw1_splinter_len_to_sw_len',
-        # 'PM.sw2_splinter_len / SW2.sw_phonetic_len pm_sw2_splinter_len_to_sw_len',
-        # 'PM.sw3_splinter_len / SW3.sw_phonetic_len pm_sw3_splinter_len_to_sw_len',
-        # 'PM.sw4_splinter_len / SW4.sw_phonetic_len pm_sw4_splinter_len_to_sw_len',
-        # 'PM.sw1_splinter_len / nu_phonetic_len pm_sw1_splinter_len_to_nu_len',
-        # 'PM.sw2_splinter_len / nu_phonetic_len pm_sw2_splinter_len_to_nu_len',
-        # 'PM.sw3_splinter_len / nu_phonetic_len pm_sw3_splinter_len_to_nu_len',
-        # 'PM.sw4_splinter_len / nu_phonetic_len pm_sw4_splinter_len_to_nu_len',
-
+        'nu_word_class', 'nu_phonetic',
+        'nu_syllabic', 'G_nu_syllabic', 'G_nu_syllabic__ignore',
+        'nu_graphic_len', 'G_nu_graphic_len',
+        'nu_phonetic_len', 'G_nu_phonetic_len',
+        'nu_syllabic_len', 'G_nu_syllabic_len',
+        'n_of_overlapping_letters', 'G_n_of_overlapping_letters',
+        'n_of_overlapping_phones', 'G_n_of_overlapping_phones',
+        'lexsh_main', 'G_lexsh_main', 'G_lexsh_main__ignore', 'lexsh_sm', 'G_lexsh_sm', 'G_lexsh_sm__ignore',
+        'lexsh_whatm', 'G_lexsh_whatm', 'G_lexsh_whatm__ignore',
+        'split_point_1', 'G_split_point_1', 'split_point_2', 'G_split_point_2', 'split_point_3', 'G_split_point_3'
     )
 
+    __IMG_FIELDS_ALL = (
+        'image_id',
+        'sub_sem_cat', 'dom_sem_cat', 'sub_name', 'dom_name',
+        'sub_number', 'dom_number', 'half_number', 'sub_sub'
+    )
+    __IMG_FIELDS = __IMG_FIELDS_ALL[1:]
 
+    __SW_FIELDS_ALL = (
+        'sw_graphic',
+        'first_language', 'survey_language',
+        'source_language', 'sw_phonetic', 'sw_word_class',
+        'sw_syllabic', 'G_sw_syllabic', 'G_sw_syllabic__ignore',
+        'sw_graphic_len', 'G_sw_graphic_len',
+        'sw_phonetic_len', 'G_sw_phonetic_len',
+        'sw_syllabic_len', 'G_sw_syllabic_len', 'frequency_in_snc'
+    )
+    __SW_FIELDS = __SW_FIELDS_ALL[:1] + __SW_FIELDS_ALL[3:]
 
-    _EXPORT_SELECT = """SELECT {} FROM naming_unit NU
+    __SPL_FIELDS_ALL = (
+        'nu_graphic', 'first_language', 'survey_language', 'image_id',
+        'type_of_splinter',
+        'sw1_splinter', 'sw2_splinter', 'sw3_splinter', 'sw4_splinter',
+        'sw1_splinter_len', 'sw2_splinter_len', 'sw3_splinter_len', 'sw4_splinter_len',
+        'G_sw1_splinter', 'G_sw1_splinter__ignore', 'G_sw2_splinter', 'G_sw2_splinter__ignore',
+        'G_sw3_splinter', 'G_sw3_splinter__ignore', 'G_sw4_splinter', 'G_sw4_splinter__ignore',
+        'G_sw1_splinter_len', 'G_sw1_splinter_len__ignore', 'G_sw2_splinter_len', 'G_sw2_splinter_len__ignore',
+        'G_sw3_splinter_len', 'G_sw3_splinter_len__ignore', 'G_sw4_splinter_len', 'G_sw4_splinter_len__ignore'
+    )
+    __SPL_FIELDS = __SPL_FIELDS_ALL[4:]
+
+    __SPL_TYPES = ('gs', 'gm', 'ps', 'pm')
+
+    def __init__(self, wb, conn):
+        self._FIELDS, select_fields = self.__create_fields()
+        self._EXPORT_SELECT = self.__create_export_select(select_fields)
+
+        super().__init__(wb, conn)  # vyzaduje _FIELDS
+
+        self.__nu_table = NamingUnitTable(wb, conn, self.__NU_FIELDS_ALL)
+        self.__img_table = ImageTable(wb, conn, self.__IMG_FIELDS_ALL)
+        self.__sw_table = SourceWordTable(wb, conn, self.__SW_FIELDS_ALL)
+        self.__spl_table = SplinterTable(wb, conn, self.__SPL_FIELDS_ALL)
+
+    @classmethod
+    def __create_fields(cls):
+
+        def sw_fn(f: str) -> str:
+            gflag = f.startswith('G_')
+            if gflag:
+                f = f[2:]
+            if f.startswith('sw_'):
+                f = f[3:]
+            return 'G_sw{}_' + f if gflag else 'sw{}_' + f
+
+        def spl_fn(f: str) -> str:
+            if f == 'type_of_splinter':
+                return '{}_name'
+            gflag = f.startswith('G_')
+            if gflag:
+                f = f[2:]
+            return 'G_{}_' + f if gflag else '{}_' + f
+
+        fields = []
+        select = []
+
+        fields.extend(cls.__NU_FIELDS)
+        select.extend('NU.' + f for f in cls.__NU_FIELDS)
+
+        fields.extend(cls.__IMG_FIELDS)
+        select.extend('I.' + f for f in cls.__IMG_FIELDS)
+
+        sw_fmt = [sw_fn(f) for f in cls.__SW_FIELDS]
+
+        for i in range(4):
+            for field, fmt in zip(cls.__SW_FIELDS, sw_fmt):
+                newname = fmt.format(i+1)
+                fields.append(newname)
+                select.append('SW{}.{} {}'.format(i+1, field, newname))
+
+        spl_fmt = [spl_fn(f) for f in cls.__SPL_FIELDS]
+
+        for name in cls.__SPL_TYPES:
+            upcase = name.upper()
+            for field, fmt in zip(cls.__SPL_FIELDS, spl_fmt):
+                newname = fmt.format(name)
+                fields.append(newname)
+                select.append('{}.{} {}'.format(upcase, field, newname))
+
+        return tuple(fields), tuple(select)
+
+    @staticmethod
+    def __create_export_select(select_fields):
+        return """SELECT {} FROM naming_unit NU
 
   LEFT JOIN image I
     ON NU.image_id = I.image_id
@@ -754,38 +796,44 @@ class SplinterView(EditableTableLike):
       AND NU.image_id = PM.image_id
       AND PM.type_of_splinter = 'phonetic modified';
 """.format(
-        ', '.join(__SELECT_FIELDS)
-    )
-
-    _EXCLUDE_EDITABLE = {
-        'sw1_graphic',
-        'sw2_graphic',
-        'sw3_graphic',
-        'sw4_graphic',
-        'gs_name',
-        'gm_name',
-        'ps_name',
-        'pm_name',
-        'sw1_frequency_in_snc',
-        'sw2_frequency_in_snc',
-        'sw3_frequency_in_snc',
-        'sw4_frequency_in_snc',
-    }
-
-
-    __PATTERN_ALIAS = re.compile(r'.* +([^ ]+)')
-    __PATTERN_FROM_TABLE = re.compile(r'(.*\.)(.*)')
-
-    def __init__(self, wb, conn):
-        super().__init__(wb, conn)
-        self._FIELDS = tuple(self.__select_field_to_field(x) for x in self.__SELECT_FIELDS)
+            ', '.join(select_fields)
+        )
 
     @classmethod
-    def __select_field_to_field(cls, x):
-        m = cls.__PATTERN_ALIAS.fullmatch(x)
-        if m:
-            return m.group(1)
-        m = cls.__PATTERN_FROM_TABLE.fullmatch(x)
-        if m:
-            return m.group(2)
-        return x
+    def __range(cls, t, arg=None):
+
+        nu = len(cls.__NU_FIELDS)
+        img = len(cls.__IMG_FIELDS)
+        sw = len(cls.__SW_FIELDS)
+        spl = len(cls.__SPL_FIELDS)
+
+        if t == 'nu':
+            start = 0
+            stop = nu
+        elif t == 'img':
+            start = nu
+            stop = nu + img
+        elif t == 'sw':
+            start = nu + img + (arg-1) * sw
+            stop = start + sw
+        elif t == 'spl':
+            start = nu + img + 4 * sw + cls.__SPL_TYPES.index(arg) * spl
+            stop = start + spl
+
+        return range(start, stop)
+
+    def _update(self, datarow):
+
+        r = self.__range('nu')
+        self.__nu_table._update(datarow[r.start:r.stop])
+
+        r = self.__range('img')
+        self.__img_table._update(datarow[r.start:r.stop])
+
+        for i in range(4):
+            r = self.__range('sw', i+1)
+            self.__sw_table._update(datarow[r.start:r.stop])
+
+        for t in self.__SPL_TYPES:
+            r = self.__range('spl', t)
+            self.__spl_table._update(datarow[r.start:r.stop])

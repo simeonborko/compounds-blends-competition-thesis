@@ -5,40 +5,59 @@ from tkinter import *
 from openpyxl import Workbook, load_workbook
 from os.path import isfile
 
-from model import ImageTable, LanguageTable, NamingUnitTable, RespondentTable, ResponseTable, SourceWordTable, SplinterTable
+from dependency import DependencyManager
+from model import ImageTable, LanguageTable, NamingUnitTable, RespondentTable, ResponseTable, SourceWordTable,\
+    SplinterTable, SplinterView
 from tools import Connection, ListSaver
 import configuration
 
 
-TABLES = (ImageTable, LanguageTable, NamingUnitTable, RespondentTable, ResponseTable, SourceWordTable, SplinterTable)
+TABLES = (ImageTable, LanguageTable, NamingUnitTable, RespondentTable, ResponseTable, SourceWordTable, SplinterTable,
+          SplinterView)
 
 
 def export():
 
-    if isfile(configuration.XLSX_FILE):
-        messagebox.showerror('Chyba', 'Súbor {} už existuje'.format(configuration.XLSX_FILE))
-        return
+    created = isfile(configuration.XLSX_FILE)
 
-    wb = Workbook()
+    if not created:
+        wb = Workbook()
+        wb.remove(wb['Sheet'])
+    else:
+        wb = load_workbook(configuration.XLSX_FILE)
+
     with Connection() as conn:
-        for table in TABLES:
-            table(wb, conn).create_sheet()
+        results = [table.name() for table in TABLES if table(wb, conn).create_sheet()]
 
-    wb.remove(wb['Sheet'])
     wb.save(configuration.XLSX_FILE)
 
-    messagebox.showinfo(
-        'Vytvorenie dokumentu',
-        'Dokument vytvorený:\n\n' + configuration.XLSX_FILE
-    )
+    if not created:
+        messagebox.showinfo(
+            'Exportovať',
+            'Dokument vytvorený:\n\n{}'.format(configuration.XLSX_FILE)
+        )
+    elif len(results) > 0:
+        messagebox.showinfo(
+            'Exportovať',
+            'Boli pridané tieto hárky:\n\n{}'.format(
+                '\n'.join('- ' + n for n in results)
+            )
+        )
+    else:
+        messagebox.showwarning(
+            'Exportovať',
+            'Dokument bol už vytvorený a žiadne hárky neboli pridané'
+        )
 
 
 def sync():
 
+    # kontrola ci subor existuje
     if not isfile(configuration.XLSX_FILE):
         messagebox.showerror('Chyba', 'Súbor {} neexistuje'.format(configuration.XLSX_FILE))
         return
 
+    # vybrate tabulky
     tables = selected_tables()
     if len(tables) == 0:
         messagebox.showwarning(
@@ -47,17 +66,28 @@ def sync():
         )
         return
 
+    dm = DependencyManager()
+    synced_tables = []
+
     wb = load_workbook(configuration.XLSX_FILE)
     with Connection() as conn:
+
         for table in tables:
-            table(wb, conn).sync()
+            if table(wb, conn).sync():
+                synced_tables.append(table)
+                dm.set_synced(table)
+
+        for table in dm.effected:
+            if table(wb, conn).sync():
+                synced_tables.append(table)
+
         conn.commit()
 
     wb.save(configuration.XLSX_FILE)
 
     messagebox.showinfo(
         'Synchronizácia',
-        'Synchronizované:\n\n' + '\n'.join('- ' + table.name() for table in tables)
+        'Synchronizované:\n\n' + '\n'.join('- ' + table.name() for table in synced_tables)
     )
 
 
@@ -81,13 +111,20 @@ def generate():
 
     affected = OrderedDict()
 
+    dm = DependencyManager()
+
     wb = load_workbook(configuration.XLSX_FILE)
     with Connection() as conn:
         for table in tables:
             t = table(wb, conn)
             t.sync()
             affected[table.name()] = t.generate(force=force, corpus=corpus)
-            t.sync()
+            if t.sync():
+                dm.set_synced(table)
+
+        for table in dm.effected:
+            table(wb, conn).sync()
+
         conn.commit()
     wb.save(configuration.XLSX_FILE)
 
@@ -120,6 +157,8 @@ def integrity():
 
     affected = OrderedDict()
 
+    dm = DependencyManager()
+
     wb = load_workbook(configuration.XLSX_FILE)
     with Connection() as conn:
         for table in tables:
@@ -128,7 +167,12 @@ def integrity():
             added = t.integrity_add()
             removed = t.integrity_junk()
             affected[table.name()] = (added, removed)
-            t.sync()
+            if t.sync():
+                dm.set_synced(table)
+
+        for table in dm.effected:
+            table(wb, conn).sync()
+
         conn.commit()
     wb.save(configuration.XLSX_FILE)
 
@@ -142,7 +186,7 @@ def integrity():
 
 checkvars = []
 
-default_checkvals = [1] * len(TABLES) + [1, 0]
+default_checkvals = [1] * len(TABLES) + [1, 1]
 
 
 def selected_tables():
@@ -168,7 +212,7 @@ with ListSaver(configuration.CHECKBOX_FILE, default_checkvals) as saver:
 
     Button(
         mw,
-        text='Vytvoriť dokument',
+        text='Exportovať',
         command=export,
     ).grid(row=0, column=1, padx=5, pady=5, rowspan=2, sticky=E+W)
 
