@@ -102,10 +102,11 @@ class TableLike(ABC):
 
         # co su iba v SHEET, ofarbit cerveno
         if len(keys_sheet_only) > 0:
-            modified = True
             for key in keys_sheet_only:
                 for cell in sheet_dict[key]:
-                    cell.fill = self._REDFILL
+                    if cell.fill != self._REDFILL:
+                        cell.fill = self._REDFILL
+                        modified = True
 
         # co su aj aj, synchronizovat, zafarbit zlto zmenene
         return self._sync((db_dict[k], sheet_dict[k]) for k in keys_both) or modified
