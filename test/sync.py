@@ -146,8 +146,8 @@ class SplinterViewSyncTestCase(MyTestCase):
         self.row = next(self.sheet.iter_rows(min_row=2))
 
     def tearDown(self):
-        super().tearDown()
         self.assertFalse(self.view.sync())
+        super().tearDown()  # rollback
 
     def __change_row_vals(self, vals: dict):
         orig = {}
