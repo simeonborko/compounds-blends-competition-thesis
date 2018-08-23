@@ -30,9 +30,9 @@ class TableLike(ABC):
 
     def __add_header(self, sheet):
         sheet.append(self._FIELDS)
-        sheet.row_dimensions[1].font = Font(bold=True)
-        for i in self._emphasized_columns:
-            sheet.cell(row=1, column=i + 1).font = Font(bold=True, italic=True)
+        emphasized = set(self._emphasized_columns)
+        for i in range(len(self._FIELDS)):
+            sheet.cell(row=1, column=i + 1).font = Font(italic=True) if i in emphasized else Font(bold=True)
 
     @property
     def _emphasized_columns(self):
@@ -756,18 +756,10 @@ class SplinterView(EditableTableLike):
     _PRIMARY = 4
 
     _EXCLUDE_EDITABLE = {
-        'sw1_graphic',
-        'sw2_graphic',
-        'sw3_graphic',
-        'sw4_graphic',
         'gs_name',
         'gm_name',
         'ps_name',
         'pm_name',
-        'sw1_frequency_in_snc',
-        'sw2_frequency_in_snc',
-        'sw3_frequency_in_snc',
-        'sw4_frequency_in_snc',
     }
 
     __NU_FIELDS_ALL = __NU_FIELDS = (
@@ -790,23 +782,19 @@ class SplinterView(EditableTableLike):
         'split_point_1', 'G_split_point_1', 'split_point_2', 'G_split_point_2', 'split_point_3', 'G_split_point_3'
     )
 
-    __IMG_FIELDS_ALL = (
-        'image_id',
+    __IMG_FIELDS = (
         'sub_sem_cat', 'dom_sem_cat', 'sub_name', 'dom_name',
         'sub_number', 'dom_number', 'half_number', 'sub_sub'
     )
-    __IMG_FIELDS_EXTRA = {'image_id'}
 
-    __SW_FIELDS_ALL = (
+    __SW_FIELDS = (
         'sw_graphic',
-        'first_language', 'survey_language',
         'source_language', 'sw_phonetic', 'sw_word_class',
         'sw_syllabic', 'G_sw_syllabic', 'G_sw_syllabic__ignore',
         'sw_graphic_len', 'G_sw_graphic_len',
         'sw_phonetic_len', 'G_sw_phonetic_len',
         'sw_syllabic_len', 'G_sw_syllabic_len', 'frequency_in_snc'
     )
-    __SW_FIELDS_EXTRA = {'first_language', 'survey_language'}
 
     __SPL_FIELDS_ALL = (
         'nu_graphic', 'first_language', 'survey_language', 'image_id',
@@ -824,21 +812,18 @@ class SplinterView(EditableTableLike):
 
     def __init__(self, wb, conn):
 
-        self.__IMG_FIELDS = tuple(f for f in self.__IMG_FIELDS_ALL if f not in self.__IMG_FIELDS_EXTRA)
-        self.__SW_FIELDS = tuple(f for f in self.__SW_FIELDS_ALL if f not in self.__SW_FIELDS_EXTRA)
         self.__SPL_FIELDS = tuple(f for f in self.__SPL_FIELDS_ALL if f not in self.__SPL_FIELDS_EXTRA)
 
-        self._FIELDS, select_fields = self.__create_fields()
+        self._FIELDS, static_fields, select_fields = self.__create_fields()
+        self._EXCLUDE_EDITABLE.update(static_fields)
         self._EXPORT_SELECT = self.__create_export_select(select_fields)
 
         super().__init__(wb, conn)  # vyzaduje _FIELDS
 
         self.__nu_table = NamingUnitTable(wb, conn, self.__NU_FIELDS_ALL)
-        self.__img_table = ImageTable(wb, conn, self.__IMG_FIELDS_ALL)
-        self.__sw_table = SourceWordTable(wb, conn, self.__SW_FIELDS_ALL)
         self.__spl_table = SplinterTable(wb, conn, self.__SPL_FIELDS_ALL)
 
-        self.__indices = self.__create_indices()
+        self.__indices = self.__create_indices()  # splinter indices
 
     def __create_fields(self):
 
@@ -859,12 +844,14 @@ class SplinterView(EditableTableLike):
             return 'G_{}_' + f if gflag else '{}_' + f
 
         fields = []
+        static = []  # img, sw
         select = []
 
         fields.extend(self.__NU_FIELDS)
         select.extend('NU.' + f for f in self.__NU_FIELDS)
 
         fields.extend(self.__IMG_FIELDS)
+        static.extend(self.__IMG_FIELDS)
         select.extend('I.' + f for f in self.__IMG_FIELDS)
 
         sw_fmt = [sw_fn(f) for f in self.__SW_FIELDS]
@@ -873,6 +860,7 @@ class SplinterView(EditableTableLike):
             for field, fmt in zip(self.__SW_FIELDS, sw_fmt):
                 newname = fmt.format(i+1)
                 fields.append(newname)
+                static.append(newname)
                 select.append('SW{}.{} {}'.format(i+1, field, newname))
 
         spl_fmt = [spl_fn(f) for f in self.__SPL_FIELDS]
@@ -884,7 +872,7 @@ class SplinterView(EditableTableLike):
                 fields.append(newname)
                 select.append('{}.{} {}'.format(upcase, field, newname))
 
-        return tuple(fields), tuple(select)
+        return tuple(fields), tuple(static), tuple(select)
 
     @staticmethod
     def __create_export_select(select_fields):
@@ -942,52 +930,19 @@ class SplinterView(EditableTableLike):
         )
 
     def __create_indices(self):
-        indices = {'nu': tuple(self.__range('nu'))}
 
-        lst = list(self.__range('img'))
-        lst.extend(self._FIELDS.index(ef) for ef in self.__IMG_FIELDS_EXTRA)
-        lst.sort()
-        indices['img'] = tuple(lst)
-
-        extending = [self._FIELDS.index(ef) for ef in self.__SW_FIELDS_EXTRA]
-        indices['sw'] = tuple(sorted(list(self.__range('sw', i+1)) + extending) for i in range(4))
+        def spl_range(name):
+            nu = len(self.__NU_FIELDS)
+            img = len(self.__IMG_FIELDS)
+            sw = len(self.__SW_FIELDS)
+            spl = len(self.__SPL_FIELDS)
+            start = nu + img + 4 * sw + self.__SPL_TYPES.index(name) * spl
+            return range(start, start + spl)
 
         extending = [self._FIELDS.index(ef) for ef in self.__SPL_FIELDS_EXTRA]
-        indices['spl'] = {name: sorted(list(self.__range('spl', name)) + extending) for name in self.__SPL_TYPES}
-
-        return indices
-
-    def __range(self, t, arg=None):
-
-        nu = len(self.__NU_FIELDS)
-        img = len(self.__IMG_FIELDS)
-        sw = len(self.__SW_FIELDS)
-        spl = len(self.__SPL_FIELDS)
-
-        if t == 'nu':
-            start = 0
-            stop = nu
-        elif t == 'img':
-            start = nu
-            stop = nu + img
-        elif t == 'sw':
-            start = nu + img + (arg-1) * sw
-            stop = start + sw
-        elif t == 'spl':
-            start = nu + img + 4 * sw + self.__SPL_TYPES.index(arg) * spl
-            stop = start + spl
-
-        return range(start, stop)
+        return {name: sorted(list(spl_range(name)) + extending) for name in self.__SPL_TYPES}
 
     def _update(self, datarow):
-
-        self.__nu_table._update([datarow[i] for i in self.__indices['nu']])
-
-        r = self.__range('img')
-        self.__img_table._update([datarow[i] for i in self.__indices['img']])
-
-        for i in range(4):
-            self.__sw_table._update([datarow[j] for j in self.__indices['sw'][i]])
-
+        self.__nu_table._update([datarow[i] for i in range(len(self.__NU_FIELDS))])
         for name in self.__SPL_TYPES:
-            self.__spl_table._update([datarow[i] for i in self.__indices['spl'][name]])
+            self.__spl_table._update([datarow[i] for i in self.__indices[name]])
