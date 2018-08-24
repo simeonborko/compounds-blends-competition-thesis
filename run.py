@@ -17,7 +17,6 @@ GEN_CLSS = (
     # SplinterTable
 )
 INTEG_CLSS = (LanguageTable, NamingUnitTable, SourceWordTable, SplinterTable)
-VIEW_CLSS = (SplinterView, Overview)
 
 widgetmanager = WidgetManager()
 
@@ -47,6 +46,10 @@ def generate():
 def integrity():
     clss = [INTEG_CLSS[i] for i in varmanager[Group.INTEG]]
     threading.Thread(target=worker.integrity, args=(clss, widgetmanager.widgets)).start()
+
+
+def view(cls, title):
+    threading.Thread(target=worker.syncview, args=(cls, title, widgetmanager.widgets)).start()
 
 
 if not configuration.TKINTER_TRACEBACK:
@@ -141,7 +144,9 @@ with VarManager(configuration.CHECKBOX_FILE) as varmanager:
     Button(integrityRightFrame, text='Kontrola súdržnosti', command=integrity).pack(padx=10, pady=10)
 
     # views
-    for i, cls in enumerate(VIEW_CLSS):
-        Button(viewFrame, text=cls.name().upper()).pack(expand=True, side=LEFT, padx=10, pady=10)
+    Button(viewFrame, text=SplinterView.name().upper(), command=lambda: view(SplinterView, 'Splinter View'))\
+        .pack(expand=True, side=LEFT, padx=10, pady=10)
+    Button(viewFrame, text=Overview.name().upper(), command=lambda: view(Overview, 'Overview'))\
+        .pack(expand=True, side=LEFT, padx=10, pady=10)
 
     mw.mainloop()

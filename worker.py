@@ -164,3 +164,32 @@ def integrity(clss, widgets):
             '- {} (pridané: {}, odobrané: {})'.format(name, *args) for name, args in result.items()
         )])
         messagebox.showinfo('Kontrola súdržnosti', msg)
+
+
+def syncview(cls, title, widgets):
+    with Disabler(**widgets):
+        if not isfile(configuration.XLSX_FILE):
+            messagebox.showerror('Chyba', 'Súbor {} neexistuje'.format(configuration.XLSX_FILE))
+            return
+
+        wb = load_workbook(configuration.XLSX_FILE)
+
+        # ak neexistuje, tak vytvorime
+        if cls.name() not in wb.sheetnames:
+            with Connection() as conn:
+                result = cls(wb, conn).create_sheet()
+            if result:
+                wb.save(configuration.XLSX_FILE)
+                messagebox.showinfo(title, 'Hárok bol vytvorený')
+            else:
+                messagebox.showerror(title, 'Hárok sa nepodarilo vytvoriť')
+
+        # ak existuje, tak synchronizujeme
+        else:
+            with Connection() as conn:
+                syncmanager = SyncManager([cls], wb, conn)
+                syncmanager.sync()
+                conn.commit()
+            wb.save(configuration.XLSX_FILE)
+
+            messagebox.showinfo(title, __msg(syncmanager))
