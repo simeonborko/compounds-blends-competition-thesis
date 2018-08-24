@@ -58,7 +58,7 @@ class TableLike(ABC):
         pass
 
     def create_sheet(self) -> bool:
-        if self._NAME in self._wb.sheetnames:
+        if self.sheet_created:
             return False
 
         sheet = self._wb.create_sheet(self._NAME)
@@ -119,6 +119,9 @@ class TableLike(ABC):
 
     @property
     def fields(self) -> tuple: return self._FIELDS
+
+    @property
+    def sheet_created(self) -> bool: return self._NAME in self._wb.sheetnames
 
 
 class StaticView(TableLike):
@@ -406,7 +409,7 @@ class Table(EditableTableLike, metaclass=ABCMeta):
                 " AND ".join("{0}=%({0})s".format(p) for p in self.primary_fields)
             )
 
-            affected = self._executemany(query, args, result=True).result
+            affected = self._executemany(query, args).result
 
             if len(args) != affected:
                 print("Pocet args: {}, pocet affected: {}".format(len(args), affected), file=sys.stderr)
@@ -422,8 +425,7 @@ class Table(EditableTableLike, metaclass=ABCMeta):
                 self._NAME,
                 ', '.join(self.primary_fields),
                 self._INTEGRITY_SELECT
-            ),
-            result=True
+            )
         ).result
 
     def integrity_junk(self) -> int:

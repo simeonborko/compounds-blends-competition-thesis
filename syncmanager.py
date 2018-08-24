@@ -1,4 +1,4 @@
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from model import SplinterView, NamingUnitTable, ImageTable, SourceWordTable, SplinterTable, Overview, Table
 
 
@@ -44,7 +44,9 @@ class SyncManager:
             affected = []
 
             for obj in objs:
-                if obj.sync():
+                if not obj.sheet_created:
+                    continue
+                elif obj.sync():
                     self.__modified.append(obj.__class__)
                     potential = list(self.__RULES[obj.__class__])
 
@@ -59,20 +61,21 @@ class SyncManager:
                     self.__stayed.append(obj.__class__)
             self.__sync([cls(*self.__args) for cls in affected])
 
-    def generate(self):
+    def generate(self, **kwargs):
         """Spusti synchronizaciu a generovanie."""
         for obj in self.__objs:
             obj.sync()
-            obj.generate()
+            obj.generate(**kwargs)
         self.sync()
 
-    def integrity(self):
+    def integrity(self) -> OrderedDict:
         """Spusti synchronizovanie a kontrolu integrity."""
+        result = OrderedDict()
         for obj in self.__objs:
             obj.sync()
-            obj.integrity_add()
-            obj.integrity_junk()
+            result[obj.name()] = (obj.integrity_add(), obj.integrity_junk())
         self.sync()
+        return result
 
     def sync(self):
         self.__sync(self.__objs)
