@@ -201,36 +201,57 @@ if not configuration.TKINTER_TRACEBACK:
     Tk.report_callback_exception = lambda obj, exc, val, tb: print(val, file=sys.stderr)
 
 
-def make_line(parent, row, **kwargs):
-    Frame(parent, highlightbackground="gray", highlightcolor="gray", highlightthickness=1, bd=0, **kwargs).grid(
-        row=row, column=0, pady=10, padx=10, sticky=W + E, columnspan=2
+def make_line(parent, row):
+    Frame(parent, highlightbackground="#aaaaaa", highlightcolor="#aaaaaa", highlightthickness=1, height=1.5).grid(
+        row=row, column=0, sticky=W + E, columnspan=2, padx=5
     )
+
+# framecls = Frame
+# Frame = lambda mw: framecls(mw, highlightbackground="gray", highlightcolor="gray", highlightthickness=1, bd=0)
 
 
 with ListSaver(configuration.CHECKBOX_FILE, default_checkvals) as saver:
     mw = Tk()
     mw.wm_title("Workbook Tlačítka")
 
+    row = 0
+
     exportFrame = Frame(mw)
-    exportFrame.grid(row=0, column=0, columnspan=2, sticky=W+E, pady=10, padx=10)
+    exportFrame.grid(row=row, column=0, columnspan=2, sticky=W+E, pady=10, padx=10)
+
+    row += 1
+    make_line(mw, row)
+    row += 1
 
     syncLeftFrame = Frame(mw)
-    syncLeftFrame.grid(row=1, column=0, pady=10, padx=10)
+    syncLeftFrame.grid(row=row, column=0, pady=10, padx=10)
     syncRightFrame = Frame(mw)
-    syncRightFrame.grid(row=1, column=1, pady=10, padx=10)
+    syncRightFrame.grid(row=row, column=1, pady=10, padx=10, sticky=W)
+
+    row += 1
+    make_line(mw, row)
+    row += 1
 
     generateLeftFrame = Frame(mw)
-    generateLeftFrame.grid(row=2, column=0, pady=10, padx=10)
+    generateLeftFrame.grid(row=row, column=0, pady=10, padx=10)
     generateRightFrame = Frame(mw)
-    generateRightFrame.grid(row=2, column=1, pady=10, padx=10)
+    generateRightFrame.grid(row=row, column=1, pady=10, padx=10, sticky=W)
+
+    row += 1
+    make_line(mw, row)
+    row += 1
 
     integrityLeftFrame = Frame(mw)
-    integrityLeftFrame.grid(row=3, column=0, pady=10, padx=10)
+    integrityLeftFrame.grid(row=row, column=0, pady=10, padx=10)
     integrityRightFrame = Frame(mw)
-    integrityRightFrame.grid(row=3, column=1, pady=10, padx=10)
+    integrityRightFrame.grid(row=row, column=1, pady=10, padx=10, sticky=W)
+
+    row += 1
+    make_line(mw, row)
+    row += 1
 
     viewFrame = Frame(mw)
-    viewFrame.grid(row=4, column=0, columnspan=2, sticky=W+E, pady=10, padx=10)
+    viewFrame.grid(row=row, column=0, columnspan=2, sticky=W+E, pady=10, padx=10)
 
     # export
     Button(exportFrame, text='Exportovať').pack(padx=10, pady=10)
