@@ -1,7 +1,6 @@
 from abc import ABC, ABCMeta, abstractmethod
 import sys
 from collections import namedtuple
-import re
 
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill

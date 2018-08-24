@@ -75,7 +75,7 @@ import csv
 from collections import OrderedDict
 from operator import itemgetter
 
-from tools.tools import Connection, tsv_reader, get_res2lang, get_lang2code, decoded, Table
+from tools.tools import Connection, tsv_reader, get_res2lang, get_lang2code, Table
 from sys import stderr
 
 
@@ -141,7 +141,7 @@ def check_responses(conn, rows, filename):
                 (respondent_id, image_id)
             )
 
-            d_naming_unit = next(decoded(c))[0]
+            d_naming_unit = next(c)[0]
 
             if naming_unit != d_naming_unit:
                 wr.writerow((

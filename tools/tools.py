@@ -21,11 +21,6 @@ class Connection:
         self.conn.close()
 
 
-# TODO otestovat ci to pymysql potrebuje
-def decoded(cursor) -> iter:
-    return map(lambda r: tuple([x.decode("utf-8") if type(x) is bytes else x for x in r]), cursor)
-
-
 def tsv_reader(fp):
     cr = csv.reader(fp, delimiter='\t')
     return map(lambda row: [c.strip() if len(c.strip()) > 0 else None for c in row], cr)
@@ -35,7 +30,7 @@ def get_res2lang(cursor) -> dict:
     """respondent_id => (first_language, survey_language)"""
     res2lang = {}
     cursor.execute('select respondent_id, first_language, survey_language from respondent')
-    for r in decoded(cursor):
+    for r in cursor:
         res2lang[r[0]] = (r[1], r[2])
     return res2lang
 
@@ -43,7 +38,7 @@ def get_res2lang(cursor) -> dict:
 def get_lang2code(cursor: iter) -> dict:
     """language name -> language code"""
     cursor.execute('Select name, code from language')
-    return dict(decoded(cursor))
+    return dict(cursor)
 
 
 class Table:
