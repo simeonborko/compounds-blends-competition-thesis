@@ -27,6 +27,10 @@ class Phones:
         elif phone in cls.OTHER:
             return 'o'  # other
 
+    @staticmethod
+    def shorten_vowels(expr: str) -> str:
+        return expr.replace('iː', 'ɪ').replace('ɑː', 'ʌ').replace('uː', 'ʊ')
+
 
 def get_phones_list(phonetic, query='', number=None):
     """

@@ -1,4 +1,9 @@
-from typing import Optional, Sequence, List
+from abc import ABCMeta, abstractmethod
+from typing import Optional, Sequence, List, Callable
+
+from unidecode import unidecode
+
+from tools import sk, en
 
 
 class Alignment:
@@ -70,3 +75,84 @@ class Splinter:
     @property
     def splinter(self) -> Optional[Sequence]:
         return self.__alignment.splinter if self.__alignment is not None else None
+
+
+class StringSplinter(Splinter, metaclass=ABCMeta):
+
+    def __init__(self, namingunit: str, sourceword: str, strict: bool, list_fn: Callable[[str], list]):
+        self._list_fn = list_fn
+        if strict:
+            super().__init__(list_fn(namingunit), list_fn(sourceword))
+        else:
+            super().__init__(
+                list_fn(self.modify(namingunit)),
+                list_fn(self.modify(sourceword)),
+                list_fn(namingunit)
+            )
+
+    @staticmethod
+    @abstractmethod
+    def modify(expr: str) -> str:
+        raise NotImplementedError
+
+
+class GraphicSplinter(StringSplinter, metaclass=ABCMeta):
+
+    def set_splinter(self, splinter: str) -> bool:
+        return super().set_splinter(self._list_fn(splinter))
+
+    @property
+    def splinter(self) -> Optional[str]:
+        s = super().splinter
+        return ''.join(s) if s else None
+
+
+class PhoneticSplinter(StringSplinter, metaclass=ABCMeta):
+
+    def set_splinter(self, splinter: str) -> bool:
+        return super().set_splinter(self._list_fn(splinter.replace(' ', '')))
+
+    @property
+    def splinter(self) -> Optional[str]:
+        s = super().splinter
+        return ' '.join(s) if s else None
+
+
+class SlovakGraphicSplinter(StringSplinter):
+
+    def __init__(self, namingunit: str, sourceword: str, strict: bool):
+        super().__init__(namingunit, sourceword, strict, sk.get_letters_list)
+
+    @staticmethod
+    def modify(expr: str) -> str:
+        return unidecode(expr).replace('y', 'i')
+
+
+class SlovakPhoneticSplinter(StringSplinter):
+
+    def __init__(self, namingunit: str, sourceword: str, strict: bool):
+        super().__init__(namingunit, sourceword, strict, sk.get_phones_list)
+
+    @staticmethod
+    def modify(expr: str) -> str:
+        return expr.replace(':', '')
+
+
+class EnglishGraphicSplinter(StringSplinter):
+
+    def __init__(self, namingunit: str, sourceword: str, strict: bool):
+        super().__init__(namingunit, sourceword, strict, en.get_letters_list)
+
+    @staticmethod
+    def modify(expr: str) -> str:
+        return unidecode(expr).replace('c', 'k')
+
+
+class EnglishPhoneticSplinter(StringSplinter):
+
+    def __init__(self, namingunit: str, sourceword: str, strict: bool):
+        super().__init__(namingunit, sourceword, strict, en.get_phones_list)
+
+    @staticmethod
+    def modify(expr: str) -> str:
+        return en.Phones.shorten_vowels(expr)

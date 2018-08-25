@@ -1,3 +1,3 @@
-from .letters import count_letters
-from .phones import count_phones
+from .letters import count_letters, get_letters_list
+from .phones import count_phones, get_phones_list, Phones
 from .syllables import count_syllables
