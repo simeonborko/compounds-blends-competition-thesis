@@ -7,10 +7,12 @@ REDUNDANT = ' -–,.!"()'
 
 
 def replace_i(word):
+    """Nahradi foneticke i spravnym symbolom"""
     return word.replace('ɪ', 'I')
 
 
 def remove_redundant(word):
+    """Odstrani symboly, ktore robia problemy pri pocitani"""
     word = word.strip()
     for r in REDUNDANT:
         word = word.replace(r, '')
@@ -18,6 +20,7 @@ def remove_redundant(word):
 
 
 def decapitalize(phrase):
+    """Zmeni prve znaky kazdeho slova na maly znak"""
     src = phrase.split(' ')
     words = []
     for word in src:
@@ -27,47 +30,49 @@ def decapitalize(phrase):
     return ' '.join(words)
 
 
-def count_letters(word, chdzdz=True):
-    """Count letters. """
-    prev = None
-    count = 0
+def get_letters_list(word, chdzdz=True) -> list:
 
-    for letter in remove_redundant(word.lower()):
-        if chdzdz:
-            if prev == 'c' and letter == 'h' or prev == 'd' and letter in ('z', 'ž'):
-                prev = letter
-                continue
-        count += 1
-        prev = letter
-    return count
+    word = remove_redundant(word.lower())
+
+    if not chdzdz:
+        return list(word)
+
+    letters = []
+    for ltr in word:
+        if len(letters) > 0 and (letters[-1] == 'c' and ltr == 'h' or letters[-1] == 'd' and ltr in ('z', 'ž')):
+            letters[-1] += ltr
+        else:
+            letters.append(ltr)
+    return letters
 
 
-def get_phones_list(word):
-    """Get phones list."""
-    lst = PHONES_PATTERN.findall(remove_redundant(word))
+def count_letters(word, chdzdz=True) -> int:
+    """Spocita pocet pismen"""
+    return len(get_letters_list(word, chdzdz))
 
-    # Check if ok
-    cnt = 0
-    for letter in lst:
-        cnt += len(letter)
-    if cnt != count_letters(word, False):
-        raise Exception(word, lst, len(word), cnt)
 
-    return lst
+def get_phones_list(word, rep_i=True) -> list:
+    """Ziska zoznam fonem"""
+
+    if rep_i:
+        word = replace_i(word)
+
+    word = remove_redundant(word)
+    phones = PHONES_PATTERN.findall(word)
+
+    if sum(len(phone) for phone in phones) == len(word):
+        return phones
+    else:
+        decap = decapitalize(word)
+        if decap != word:
+            return get_phones_list(decap)
+        else:
+            raise Exception(word, phones)
 
 
 def count_phones(word, rep_i=True):
     """Count phones in word in phonetic transcription."""
-    if rep_i:
-        word = replace_i(word)
-    try:
-        lst = get_phones_list(word)
-    except Exception as e:
-        if word[0] != word[0].lower():
-            return count_phones(decapitalize(word))
-        #print(e, file=stderr)
-        return None
-    return len(lst)
+    return len(get_phones_list(word, rep_i))
 
 
 class SplinterType(Enum):
