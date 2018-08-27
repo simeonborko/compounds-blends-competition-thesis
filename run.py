@@ -14,7 +14,7 @@ SYNC_CLSS = (ImageTable, LanguageTable, NamingUnitTable, RespondentTable, Respon
 GEN_CLSS = (
     NamingUnitTable,
     SourceWordTable,
-    # SplinterTable
+    SplinterTable
 )
 INTEG_CLSS = (LanguageTable, NamingUnitTable, SourceWordTable, SplinterTable)
 

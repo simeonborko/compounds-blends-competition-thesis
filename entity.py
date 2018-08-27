@@ -3,6 +3,8 @@ from abc import abstractmethod, ABC
 from syllabiky.syllabiky import split_phrase
 from syllabiky.DbMatcher import DbMatcher
 from tools import sk, en
+from tools.splinter import SlovakGraphicSplinter, SlovakPhoneticSplinter, EnglishGraphicSplinter, \
+    EnglishPhoneticSplinter
 
 
 class Entity(ABC):
@@ -160,3 +162,43 @@ class NamingUnit(Entity):
         self.__nu_graphic_len()
         self.__nu_phonetic_len()
         self.__nu_syllabic_len()
+
+
+class Splinter(Entity):
+
+    def generate(self):
+        graphic = self['type_of_splinter'].startswith('graphic')
+        phonetic = self['type_of_splinter'].startswith('phonetic')
+        cls = None
+        if self['survey_language'] == 'SK':
+            if graphic:
+                cls = SlovakGraphicSplinter
+            elif phonetic:
+                cls = SlovakPhoneticSplinter
+        elif self['survey_language'] == 'EN':
+            if graphic:
+                cls = EnglishGraphicSplinter
+            elif phonetic:
+                cls = EnglishPhoneticSplinter
+
+        strict = None
+        if self['type_of_splinter'].endswith('strict'):
+            strict = True
+        elif self['type_of_splinter'].endswith('modified'):
+            strict = False
+
+        if cls is None or strict is None:
+            raise Exception
+
+        nu = self['nu_graphic'] if graphic else self['nu_phonetic']
+        if nu:
+            for i in range(1, 4+1):
+                sw = self['sw{}_graphic'.format(i)] if graphic else self['sw{}_phonetic'.format(i)]
+                if sw:
+                    s = cls(nu, sw, strict)
+                    if s.find_splinter():
+                        self['G_sw{}_splinter'.format(i)] = s.splinter
+                        self['G_sw{}_splinter_len'.format(i)] = s.length
+                    else:
+                        self['G_sw{}_splinter'.format(i)] = ''
+                        self['G_sw{}_splinter_len'.format(i)] = None

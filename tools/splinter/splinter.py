@@ -76,6 +76,11 @@ class Splinter:
     def splinter(self) -> Optional[Sequence]:
         return self.__alignment.splinter if self.__alignment is not None else None
 
+    @property
+    def length(self) -> Optional[int]:
+        # nesmie sa pouzit self.splinter, pretoze self.splinter je menena v detskych triedach
+        return len(self.__alignment.splinter) if self.__alignment is not None else None
+
 
 class StringSplinter(Splinter, metaclass=ABCMeta):
 

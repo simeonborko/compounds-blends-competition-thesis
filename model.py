@@ -1,12 +1,13 @@
 from abc import ABC, ABCMeta, abstractmethod
 import sys
 from collections import namedtuple
+from typing import Iterable, Tuple
 
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 from pymysql.cursors import DictCursor
 import configuration
-from entity import SourceWord, NamingUnit
+from entity import SourceWord, NamingUnit, Splinter
 from tools import sk
 
 
@@ -33,7 +34,7 @@ class TableLike(ABC):
             sheet.cell(row=1, column=i + 1).font = Font(italic=True) if i in emphasized else Font(bold=True)
 
     @property
-    def _emphasized_columns(self):
+    def _emphasized_columns(self) -> Iterable[int]:
         """Vrati indexy zvyraznenych stlpcov (ktore nemaju byt upravovane)."""
         return range(self._PRIMARY)
 
@@ -125,7 +126,7 @@ class TableLike(ABC):
 class StaticView(TableLike):
 
     @property
-    def _emphasized_columns(self):
+    def _emphasized_columns(self) -> Iterable[int]:
         return range(len(self._FIELDS))
 
     def _sync(self, vals_gen):
@@ -296,7 +297,7 @@ class EditableTableLike(TableLike):
         else:
             return self.__looks_like_generated(field)
 
-    def __split_fields(self):
+    def __split_fields(self) -> (Tuple[int], Tuple[int]):
         editable = []
         generated = []
         for i, field in enumerate(self._FIELDS[self._PRIMARY:], self._PRIMARY):
@@ -304,7 +305,7 @@ class EditableTableLike(TableLike):
         return tuple(editable), tuple(generated)
 
     @property
-    def _emphasized_columns(self):
+    def _emphasized_columns(self) -> Iterable[int]:
         return set(super()._emphasized_columns) | set(self.__generated)
 
     def _sync(self, vals_gen):
@@ -336,16 +337,21 @@ class EditableTableLike(TableLike):
         pass
 
     @property
-    def generated_fields(self) -> tuple: return self.__generated
+    def generated_fields(self) -> tuple:
+        return tuple(self._FIELDS[i] for i in self.__generated)
 
     @property
-    def editable_fields(self) -> tuple: return self.__editable
+    def editable_fields(self) -> tuple:
+        return tuple(self._FIELDS[i] for i in self.__editable)
 
 
 class Table(EditableTableLike, metaclass=ABCMeta):
 
     # select iba na tie riadky, ktore potrebuju byt generovane
-    _GENERATE_SELECT = None
+    _GENERATE_SELECT_NEEDED = None
+
+    # select na vsetky riadky pri generovani (napr. Splinter potrebuje aj udaje zo SourceWord)
+    _GENERATE_SELECT_ALL = None
 
     # select na riadky, ake primarne kluce maju byt v danej tabulke
     _INTEGRITY_SELECT = None
@@ -353,13 +359,15 @@ class Table(EditableTableLike, metaclass=ABCMeta):
     def __init__(self, wb: Workbook, conn, fields=None):
         super().__init__(wb, conn)
         self._EXPORT_SELECT = "SELECT {} FROM {}".format(','.join(self._FIELDS), self._NAME)
+        if self._GENERATE_SELECT_ALL is None:  # SplinterTable ma _GENERATE_SELECT_ALL v triede, nie v inite
+            self._GENERATE_SELECT_ALL = "SELECT * FROM {}".format(self._NAME)  # treba *, nestaci self._FIELDS
         self.__field_mask = self.__create_field_mask(fields)
 
     def __create_field_mask(self, fields) -> tuple:
         """
         Maska poli je n-tica indexov do _FIELDS.
         Primarne polia zostanu vzdy zachovane.
-        :param nazvy poli, ktore sa maju zachovat; alebo None
+        :param fields nazvy poli, ktore sa maju zachovat; alebo None
         :return maska poli
         """
         if fields is None:
@@ -384,10 +392,8 @@ class Table(EditableTableLike, metaclass=ABCMeta):
 
     def _generate(self, force: bool, cls) -> int:
 
-        # TODO: chcelo by to nepouzivat dict, ale named tuple
-
         c = self._execute(
-            "SELECT * FROM {}".format(self._NAME) if force else self._GENERATE_SELECT,
+            self._GENERATE_SELECT_ALL if force or not self._GENERATE_SELECT_NEEDED else self._GENERATE_SELECT_NEEDED,
             cursor=DictCursor
         ).cursor
 
@@ -411,6 +417,7 @@ class Table(EditableTableLike, metaclass=ABCMeta):
 
             if len(args) != affected:
                 print("Pocet args: {}, pocet affected: {}".format(len(args), affected), file=sys.stderr)
+                affected = affected or 0
 
             return affected
 
@@ -463,10 +470,12 @@ class Table(EditableTableLike, metaclass=ABCMeta):
         return exres.result
 
 
-
 class ImageTable(Table):
     _NAME = 'image'
-    _FIELDS = ('image_id', 'sub_sem_cat', 'dom_sem_cat', 'sub_name', 'dom_name', 'sub_number', 'dom_number', 'half_number', 'sub_sub')
+    _FIELDS = (
+        'image_id', 'sub_sem_cat', 'dom_sem_cat', 'sub_name', 'dom_name',
+        'sub_number', 'dom_number', 'half_number', 'sub_sub'
+    )
     _PRIMARY = 1
 
 
@@ -479,26 +488,28 @@ class LanguageTable(Table):
 
 class NamingUnitTable(Table):
     _NAME = 'naming_unit'
-    _FIELDS = ('nu_graphic', 'first_language', 'survey_language', 'image_id',
-               'wf_process',
+    _FIELDS = (
+        'nu_graphic', 'first_language', 'survey_language', 'image_id',
+        'wf_process',
 
-               'sw1_graphic', 'sw2_graphic', 'sw3_graphic', 'sw4_graphic',
-               'sw1_headmod', 'sw2_headmod', 'sw3_headmod', 'sw4_headmod',
-               'sw1_subdom', 'sw2_subdom', 'sw3_subdom', 'sw4_subdom',
+        'sw1_graphic', 'sw2_graphic', 'sw3_graphic', 'sw4_graphic',
+        'sw1_headmod', 'sw2_headmod', 'sw3_headmod', 'sw4_headmod',
+        'sw1_subdom', 'sw2_subdom', 'sw3_subdom', 'sw4_subdom',
 
-               'nu_word_class', 'nu_phonetic',
-               'nu_syllabic', 'G_nu_syllabic', 'G_nu_syllabic__ignore',
-               'nu_graphic_len', 'G_nu_graphic_len',
-               'nu_phonetic_len', 'G_nu_phonetic_len',
-               'nu_syllabic_len', 'G_nu_syllabic_len',
-               'n_of_overlapping_letters', 'G_n_of_overlapping_letters',
-               'n_of_overlapping_phones', 'G_n_of_overlapping_phones',
-               'lexsh_main', 'G_lexsh_main', 'G_lexsh_main__ignore', 'lexsh_sm', 'G_lexsh_sm', 'G_lexsh_sm__ignore',
-               'lexsh_whatm', 'G_lexsh_whatm', 'G_lexsh_whatm__ignore',
-               'split_point_1', 'G_split_point_1', 'split_point_2', 'G_split_point_2', 'split_point_3', 'G_split_point_3')
+        'nu_word_class', 'nu_phonetic',
+        'nu_syllabic', 'G_nu_syllabic', 'G_nu_syllabic__ignore',
+        'nu_graphic_len', 'G_nu_graphic_len',
+        'nu_phonetic_len', 'G_nu_phonetic_len',
+        'nu_syllabic_len', 'G_nu_syllabic_len',
+        'n_of_overlapping_letters', 'G_n_of_overlapping_letters',
+        'n_of_overlapping_phones', 'G_n_of_overlapping_phones',
+        'lexsh_main', 'G_lexsh_main', 'G_lexsh_main__ignore', 'lexsh_sm', 'G_lexsh_sm', 'G_lexsh_sm__ignore',
+        'lexsh_whatm', 'G_lexsh_whatm', 'G_lexsh_whatm__ignore',
+        'split_point_1', 'G_split_point_1', 'split_point_2', 'G_split_point_2', 'split_point_3', 'G_split_point_3'
+    )
     _PRIMARY = 4
 
-    _GENERATE_SELECT = """select * from {} where
+    _GENERATE_SELECT_NEEDED = """select * from {} where
   survey_language='SK' and G_nu_syllabic is null
   or G_nu_graphic_len is null
   or nu_phonetic is not null and G_nu_phonetic_len is null
@@ -513,7 +524,11 @@ class NamingUnitTable(Table):
 
 class RespondentTable(Table):
     _NAME = 'respondent'
-    _FIELDS = ('respondent_id', 'first_language', 'survey_language', 'first_language_original', 'second_language', 'other_language', 'age', 'sex', 'sex_original', 'employment', 'education', 'birth_place', 'year_of_birth', 'responding_date')
+    _FIELDS = (
+        'respondent_id', 'first_language', 'survey_language', 'first_language_original', 'second_language',
+        'other_language', 'age', 'sex', 'sex_original', 'employment', 'education', 'birth_place', 'year_of_birth',
+        'responding_date'
+    )
     _PRIMARY = 1
 
 
@@ -533,7 +548,7 @@ class SourceWordTable(Table):
                'sw_syllabic_len', 'G_sw_syllabic_len', 'frequency_in_snc')
     _PRIMARY = 3
     _EXCLUDE_EDITABLE = {'frequency_in_snc'}
-    _GENERATE_SELECT = """select * from {} where
+    _GENERATE_SELECT_NEEDED = """select * from {} where
   survey_language='SK' and G_sw_syllabic is null
   or G_sw_graphic_len is null
   or sw_phonetic is not null and G_sw_phonetic_len is null
@@ -589,6 +604,46 @@ class SplinterTable(Table):
     # UNION SELECT 'graphic modified' type_of_splinter
     # UNION SELECT 'phonetic strict' type_of_splinter
     # UNION SELECT 'phonetic modified' type_of_splinter) T;
+
+    _GENERATE_SELECT_ALL = """
+SELECT
+  SPL.*, NU.nu_phonetic, NU.sw1_graphic, NU.sw2_graphic, NU.sw3_graphic, NU.sw4_graphic,
+  SW1.sw_phonetic sw1_phonetic, SW2.sw_phonetic sw2_phonetic, SW3.sw_phonetic sw3_phonetic, SW4.sw_phonetic sw4_phonetic
+FROM splinter SPL
+  LEFT JOIN naming_unit NU
+    ON NU.nu_graphic=SPL.nu_graphic AND NU.first_language=SPL.first_language AND
+       NU.survey_language=SPL.survey_language AND NU.image_id=SPL.image_id
+  LEFT JOIN source_word SW1
+    ON SW1.sw_graphic=NU.sw1_graphic AND
+       SW1.first_language=SPL.first_language AND SW1.survey_language=SPL.survey_language
+  LEFT JOIN source_word SW2
+    ON SW2.sw_graphic=NU.sw2_graphic AND
+       SW2.first_language=SPL.first_language AND SW2.survey_language=SPL.survey_language
+  LEFT JOIN source_word SW3
+    ON SW3.sw_graphic=NU.sw3_graphic AND
+       SW3.first_language=SPL.first_language AND SW3.survey_language=SPL.survey_language
+  LEFT JOIN source_word SW4
+    ON SW4.sw_graphic=NU.sw4_graphic AND
+       SW4.first_language=SPL.first_language AND SW4.survey_language=SPL.survey_language
+"""
+
+    _GENERATE_SELECT_NEEDED = _GENERATE_SELECT_ALL + """
+WHERE
+  SPL.type_of_splinter LIKE 'graphic %' AND (
+    SPL.G_sw1_splinter IS NULL AND SW1.sw_graphic IS NOT NULL
+    OR SPL.G_sw2_splinter IS NULL AND SW2.sw_graphic IS NOT NULL
+    OR SPL.G_sw3_splinter IS NULL AND SW3.sw_graphic IS NOT NULL
+    OR SPL.G_sw4_splinter IS NULL AND SW4.sw_graphic IS NOT NULL
+  ) OR SPL.type_of_splinter LIKE 'phonetic %' AND (
+    SPL.G_sw1_splinter IS NULL AND SW1.sw_phonetic IS NOT NULL
+    OR SPL.G_sw2_splinter IS NULL AND SW2.sw_phonetic IS NOT NULL
+    OR SPL.G_sw3_splinter IS NULL AND SW3.sw_phonetic IS NOT NULL
+    OR SPL.G_sw4_splinter IS NULL AND SW4.sw_phonetic IS NOT NULL
+  )
+"""
+
+    def generate(self, force, **kwargs) -> int:
+        return self._generate(force, Splinter)
 
 
 class SplinterView(EditableTableLike):
