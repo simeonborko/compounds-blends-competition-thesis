@@ -86,7 +86,7 @@ def export(clss, widgets):
             )
 
 
-def sync(clss, widgets):
+def sync(clss, unhighlight: bool, widgets):
     with Disabler(**widgets):
         # kontrola ci subor existuje
         if not isfile(configuration.XLSX_FILE):
@@ -103,7 +103,7 @@ def sync(clss, widgets):
         wb = load_workbook(configuration.XLSX_FILE)
         with Connection() as conn:
             syncmanager = SyncManager(clss, wb, conn)
-            syncmanager.sync()
+            syncmanager.sync(unhighlight)
             conn.commit()
 
         wb.save(configuration.XLSX_FILE)
@@ -111,7 +111,7 @@ def sync(clss, widgets):
         messagebox.showinfo('Synchronizácia', __msg(syncmanager))
 
 
-def generate(clss, force, corpus, widgets):
+def generate(clss, unhighlight: bool, force, corpus, widgets):
     with Disabler(**widgets):
         if not isfile(configuration.XLSX_FILE):
             messagebox.showerror('Chyba', 'Súbor {} neexistuje'.format(configuration.XLSX_FILE))
@@ -127,7 +127,7 @@ def generate(clss, force, corpus, widgets):
         wb = load_workbook(configuration.XLSX_FILE)
         with Connection() as conn:
             syncmanager = SyncManager(clss, wb, conn)
-            syncmanager.generate(force=force, corpus=corpus)
+            syncmanager.generate(unhighlight, force=force, corpus=corpus)
             conn.commit()
 
         wb.save(configuration.XLSX_FILE)
@@ -135,7 +135,7 @@ def generate(clss, force, corpus, widgets):
         messagebox.showinfo('Automatizované vyplnenie', __msg(syncmanager))
 
 
-def integrity(clss, widgets):
+def integrity(clss, unhighlight: bool, widgets):
     with Disabler(**widgets):
         if not isfile(configuration.XLSX_FILE):
             messagebox.showerror('Chyba', 'Súbor {} neexistuje'.format(configuration.XLSX_FILE))
@@ -153,7 +153,7 @@ def integrity(clss, widgets):
         wb = load_workbook(configuration.XLSX_FILE)
         with Connection() as conn:
             syncmanager = SyncManager(clss, wb, conn)
-            result = syncmanager.integrity()
+            result = syncmanager.integrity(unhighlight)
             conn.commit()
 
         warnings.resetwarnings()
@@ -166,7 +166,7 @@ def integrity(clss, widgets):
         messagebox.showinfo('Kontrola súdržnosti', msg)
 
 
-def syncview(cls, title, widgets):
+def syncview(cls, unhighlight: bool, title, widgets):
     with Disabler(**widgets):
         if not isfile(configuration.XLSX_FILE):
             messagebox.showerror('Chyba', 'Súbor {} neexistuje'.format(configuration.XLSX_FILE))
@@ -188,7 +188,7 @@ def syncview(cls, title, widgets):
         else:
             with Connection() as conn:
                 syncmanager = SyncManager([cls], wb, conn)
-                syncmanager.sync()
+                syncmanager.sync(unhighlight)
                 conn.commit()
             wb.save(configuration.XLSX_FILE)
 

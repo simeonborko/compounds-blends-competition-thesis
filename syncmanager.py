@@ -36,7 +36,7 @@ class SyncManager:
         """
         return set(self.__modified) | set(self.__stayed)
 
-    def __sync(self, objs):
+    def __sync(self, objs, unhighlight):
         """Zosynchronizuje dane instancie a tiez rekurzivne podla pravidiel."""
         if len(objs) > 0:
 
@@ -46,7 +46,7 @@ class SyncManager:
             for obj in objs:
                 if not obj.sheet_created:
                     continue
-                elif obj.sync():
+                elif obj.sync(unhighlight):
                     self.__modified.append(obj.__class__)
                     potential = list(self.__RULES[obj.__class__])
 
@@ -59,26 +59,26 @@ class SyncManager:
                     affected.extend(cls for cls in potential if cls not in self.__touched)
                 else:
                     self.__stayed.append(obj.__class__)
-            self.__sync([cls(*self.__args) for cls in affected])
+            self.__sync([cls(*self.__args) for cls in affected], False)
 
-    def generate(self, **kwargs):
+    def generate(self, unhighlight, **kwargs):
         """Spusti synchronizaciu a generovanie."""
         for obj in self.__objs:
-            obj.sync()
+            obj.sync(unhighlight)
             obj.generate(**kwargs)
-        self.sync()
+        self.sync(False)
 
-    def integrity(self) -> OrderedDict:
+    def integrity(self, unhighlight) -> OrderedDict:
         """Spusti synchronizovanie a kontrolu integrity."""
         result = OrderedDict()
         for obj in self.__objs:
-            obj.sync()
+            obj.sync(unhighlight)
             result[obj.name()] = (obj.integrity_add(), obj.integrity_junk())
-        self.sync()
+        self.sync(False)
         return result
 
-    def sync(self):
-        self.__sync(self.__objs)
+    def sync(self, unhighlight):
+        self.__sync(self.__objs, unhighlight)
 
     @property
     def modified(self):

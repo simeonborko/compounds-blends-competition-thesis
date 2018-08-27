@@ -20,6 +20,7 @@ class TableLike(ABC):
 
     _REDFILL = PatternFill("solid", fgColor="FF7575")
     _YELLOWFILL = PatternFill("solid", fgColor="FFFC75")
+    _NOFILL = PatternFill()
 
     ExecuteResult = namedtuple('ExecuteResult', ['cursor', 'result'])
 
@@ -71,7 +72,7 @@ class TableLike(ABC):
 
         return True
 
-    def sync(self) -> bool:
+    def sync(self, unhighlight: bool = False) -> bool:
         # ziskat zaznamy z DB
         db_dict = {dbvals[:self._PRIMARY]: list(dbvals) for dbvals in self._execute(self._EXPORT_SELECT).cursor}
 
@@ -86,6 +87,13 @@ class TableLike(ABC):
         keys_db_only = db_dict.keys() - sheet_dict.keys()
         keys_sheet_only = sheet_dict.keys() - db_dict.keys()
         keys_both = db_dict.keys() & sheet_dict.keys()
+
+        # odstranit predosle zvyraznenie
+        if unhighlight:
+            for row in sheet_dict.values():
+                for cell in row:
+                    if cell.fill == self._YELLOWFILL:
+                        cell.fill = self._NOFILL
 
         modified = False
 

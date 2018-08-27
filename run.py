@@ -22,10 +22,15 @@ widgetmanager = WidgetManager()
 
 
 class Group(Enum):
+    UNHIGHLIGHT = 0
     SYNC = 1
     GEN = 2
     OPTIONS = 3
     INTEG = 4
+
+
+def unhighlight() -> bool:
+    return varmanager[Group.UNHIGHLIGHT][0]
 
 
 def export():
@@ -34,22 +39,22 @@ def export():
 
 def sync():
     clss = [SYNC_CLSS[i] for i in varmanager[Group.SYNC]]
-    threading.Thread(target=worker.sync, args=(clss, widgetmanager.widgets)).start()
+    threading.Thread(target=worker.sync, args=(clss, unhighlight(), widgetmanager.widgets)).start()
 
 
 def generate():
     clss = [GEN_CLSS[i] for i in varmanager[Group.GEN]]
     vargroup = varmanager[Group.OPTIONS]
-    threading.Thread(target=worker.generate, args=(clss, vargroup[0], vargroup[1], widgetmanager.widgets)).start()
+    threading.Thread(target=worker.generate, args=(clss, unhighlight(), vargroup[0], vargroup[1], widgetmanager.widgets)).start()
 
 
 def integrity():
     clss = [INTEG_CLSS[i] for i in varmanager[Group.INTEG]]
-    threading.Thread(target=worker.integrity, args=(clss, widgetmanager.widgets)).start()
+    threading.Thread(target=worker.integrity, args=(clss, unhighlight(), widgetmanager.widgets)).start()
 
 
 def view(cls, title):
-    threading.Thread(target=worker.syncview, args=(cls, title, widgetmanager.widgets)).start()
+    threading.Thread(target=worker.syncview, args=(cls, unhighlight(), title, widgetmanager.widgets)).start()
 
 
 if not configuration.TKINTER_TRACEBACK:
@@ -88,6 +93,13 @@ with VarManager(configuration.CHECKBOX_FILE) as varmanager:
     make_line(mw, row)
     row += 1
 
+    highlightFrame = Frame(mw)
+    highlightFrame.grid(row=row, column=0, columnspan=2, sticky=W+E, pady=10, padx=10)
+
+    row += 1
+    make_line(mw, row)
+    row += 1
+
     syncLeftFrame = Frame(mw)
     syncLeftFrame.grid(row=row, column=0, pady=10, padx=10)
     syncRightFrame = Frame(mw)
@@ -121,6 +133,11 @@ with VarManager(configuration.CHECKBOX_FILE) as varmanager:
     # export
     testbutton = Button(exportFrame, text='Exportovať', command=export)
     testbutton.pack(padx=10, pady=10)
+
+    # highlight
+    Checkbutton(
+        highlightFrame, text='Zrušiť zvýraznenie minulých zmien', variable=varmanager.group(Group.UNHIGHLIGHT).var()
+    ).pack()
 
     # sync
     vg = varmanager.group(Group.SYNC)
