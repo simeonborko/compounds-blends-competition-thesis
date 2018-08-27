@@ -8,11 +8,11 @@ from tools import sk, en
 
 class Alignment:
 
-    def __init__(self, nu: Sequence, sw: Sequence, nu_idx: int, sw_idx: int, nu_orig: Sequence):
+    def __init__(self, nu: Sequence, sw: Sequence, nu_range: range, sw_range: range, nu_orig: Sequence):
         self._nu = nu
         self._sw = sw
-        self._nu_idx = nu_idx
-        self._sw_idx = sw_idx
+        self._nu_range = nu_range
+        self._sw_range = sw_range
         self._nu_orig = nu_orig
         self._score = None
 
@@ -21,7 +21,9 @@ class Alignment:
         """Zisti pocet rovnakych casti zo zaciatku"""
         if self._score is None:
             score = 0
-            for pair in zip(self._nu[self._nu_idx:], self._sw[self._sw_idx:]):
+            nu = self._nu[self._nu_range.start:self._nu_range.stop]
+            sw = self._sw[self._sw_range.start:self._sw_range.stop]
+            for pair in zip(nu, sw):
                 if pair[0] == pair[1]:
                     score += 1
                 else:
@@ -32,7 +34,7 @@ class Alignment:
     @property
     def splinter(self) -> Sequence:
         """Vrati rovnaku cast prilozenia z NAMING UNIT"""
-        start = self._nu_idx
+        start = self._nu_range.start
         stop = start + self.score
         return self._nu_orig[start:stop]
 
@@ -47,9 +49,17 @@ class Splinter:
 
     def __all_alignments(self) -> List[Alignment]:
         aligns = []
-        for sw_idx in range(len(self.__sourceword)):
-            for nu_idx in range(len(self.__namingunit)):
-                aligns.append(Alignment(self.__namingunit, self.__sourceword, nu_idx, sw_idx, self.__namingunit_orig))
+        for sw_start in range(len(self.__sourceword)):
+            for nu_start in range(len(self.__namingunit)):
+                for sw_stop in range(sw_start+1, len(self.__sourceword)+1):
+                    for nu_stop in range(nu_start+1, len(self.__namingunit)+1):
+                        aligns.append(Alignment(
+                            self.__namingunit,
+                            self.__sourceword,
+                            range(nu_start, nu_stop),
+                            range(sw_start, sw_stop),
+                            self.__namingunit_orig
+                        ))
         return aligns
 
     def find_splinter(self) -> bool:

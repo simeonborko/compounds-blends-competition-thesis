@@ -18,15 +18,15 @@ class FindSplinter(TestCase):
         self.assertEqual(6, s.length)
 
     def test_2(self):
-        s = EnglishPhoneticSplinter('ˈiː.ɡər', 'ˈtaɪ.ɡər', True)
+        s = EnglishPhoneticSplinter('ˈiː.ɡər', 'ˈtɪ.ɡər', True)
         self.assertTrue(s.find_splinter())
         self.assertEqual('ɡ ə r', s.splinter)
         self.assertEqual(3, s.length)
 
     def test_3(self):
-        s = EnglishPhoneticSplinter('ˈiː.ɡər', 'ˈtaɪ.ɡər', False)
+        s = EnglishPhoneticSplinter('ˈiː.ɡər', 'ˈtɪ.ɡər', False)
         self.assertTrue(s.find_splinter())
-        self.assertEqual('i ɡ ə r', s.splinter)
+        self.assertEqual('iː ɡ ə r', s.splinter)
         self.assertEqual(4, s.length)
 
 
@@ -57,7 +57,7 @@ class SetSplinter(TestCase):
         self.assertEqual(3, s.length)
 
     def test_3(self):
-        s = EnglishPhoneticSplinter('ˈiː.ɡər', 'ˈtaɪ.ɡər', False)
-        self.assertTrue(s.set_splinter('i ɡ ə r'))
-        self.assertEqual('i ɡ ə r', s.splinter)
+        s = EnglishPhoneticSplinter('ˈiː.ɡər', 'ˈtɪ.ɡər', False)
+        self.assertTrue(s.set_splinter('iː ɡ ə r'))
+        self.assertEqual('iː ɡ ə r', s.splinter)
         self.assertEqual(4, s.length)

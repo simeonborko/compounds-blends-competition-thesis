@@ -1,5 +1,6 @@
 from unittest import TestCase
 
+from tools.exception import WordSegmentException
 from tools.splinter import SlovakPhoneticSplinter
 
 
@@ -40,6 +41,9 @@ class FindSplinter(TestCase):
         self.assertTrue(s.find_splinter())
         self.assertEqual('x O b O t I: L', s.splinter)
         self.assertEqual(7, s.length)
+
+    def test_6(self):
+        self.assertRaises(WordSegmentException, SlovakPhoneticSplinter, 'alaArIgatOr', 'alaArIgatOr', True)
 
 
 class SetSplinter(TestCase):
