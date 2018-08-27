@@ -166,11 +166,44 @@ def integrity(clss, unhighlight: bool, widgets):
         messagebox.showinfo('Kontrola súdržnosti', msg)
 
 
-def syncview(cls, unhighlight: bool, title, widgets):
+def splinterview(cls, unhighlight: bool, widgets):
     with Disabler(**widgets):
         if not isfile(configuration.XLSX_FILE):
             messagebox.showerror('Chyba', 'Súbor {} neexistuje'.format(configuration.XLSX_FILE))
             return
+
+        title = 'Splinter View'
+
+        wb = load_workbook(configuration.XLSX_FILE)
+        with Connection() as conn:
+            obj = cls(wb, conn)
+            if not obj.integrity_kept:
+                messagebox.showerror(title, 'Chyba. Skontroluj súdržnosť pre tabuľku splinter.')
+                return
+
+            # ak neexistuje, tak vytvorime
+            if cls.name() not in wb.sheetnames:
+                if cls(wb, conn).create_sheet():
+                    wb.save(configuration.XLSX_FILE)
+                    messagebox.showinfo(title, 'Hárok bol vytvorený')
+                else:
+                    messagebox.showerror(title, 'Hárok sa nepodarilo vytvoriť')
+
+            else:
+                syncmanager = SyncManager([cls], wb, conn)
+                syncmanager.sync(unhighlight)
+                conn.commit()
+                wb.save(configuration.XLSX_FILE)
+                messagebox.showinfo(title, __msg(syncmanager))
+
+
+def overview(cls, unhighlight: bool, widgets):
+    with Disabler(**widgets):
+        if not isfile(configuration.XLSX_FILE):
+            messagebox.showerror('Chyba', 'Súbor {} neexistuje'.format(configuration.XLSX_FILE))
+            return
+
+        title = 'Overview'
 
         wb = load_workbook(configuration.XLSX_FILE)
 

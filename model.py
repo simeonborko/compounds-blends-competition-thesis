@@ -851,3 +851,39 @@ class SplinterView(EditableTableLike):
         self.__nu_table._update([datarow[i] for i in range(len(self.__NU_FIELDS))])
         for name in self.__SPL_TYPES:
             self.__spl_table._update([datarow[i] for i in self.__indices[name]])
+
+    @property
+    def integrity_kept(self) -> bool:
+        query = """SELECT COUNT(*) FROM naming_unit NU
+  LEFT JOIN splinter GS
+    ON NU.nu_graphic = GS.nu_graphic
+      AND NU.first_language = GS.first_language
+      AND NU.survey_language = GS.survey_language
+      AND NU.image_id = GS.image_id
+      AND GS.type_of_splinter = 'graphic strict'
+
+  LEFT JOIN splinter GM
+    ON NU.nu_graphic = GM.nu_graphic
+      AND NU.first_language = GM.first_language
+      AND NU.survey_language = GM.survey_language
+      AND NU.image_id = GM.image_id
+      AND GM.type_of_splinter = 'graphic modified'
+
+  LEFT JOIN splinter PS
+    ON NU.nu_graphic = PS.nu_graphic
+      AND NU.first_language = PS.first_language
+      AND NU.survey_language = PS.survey_language
+      AND NU.image_id = PS.image_id
+      AND PS.type_of_splinter = 'phonetic strict'
+
+  LEFT JOIN splinter PM
+    ON NU.nu_graphic = PM.nu_graphic
+      AND NU.first_language = PM.first_language
+      AND NU.survey_language = PM.survey_language
+      AND NU.image_id = PM.image_id
+      AND PM.type_of_splinter = 'phonetic modified'
+
+  WHERE GS.type_of_splinter IS NULL OR GM.type_of_splinter IS NULL
+    OR PS.type_of_splinter IS NULL OR PM.type_of_splinter IS NULL"""
+
+        return self._execute(query).cursor.fetchone()[0] == 0

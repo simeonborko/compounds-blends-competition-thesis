@@ -53,8 +53,12 @@ def integrity():
     threading.Thread(target=worker.integrity, args=(clss, unhighlight(), widgetmanager.widgets)).start()
 
 
-def view(cls, title):
-    threading.Thread(target=worker.syncview, args=(cls, unhighlight(), title, widgetmanager.widgets)).start()
+def splinterview():
+    threading.Thread(target=worker.splinterview, args=(SplinterView, unhighlight(), widgetmanager.widgets)).start()
+
+
+def overview():
+    threading.Thread(target=worker.overview, args=(Overview, unhighlight(), widgetmanager.widgets)).start()
 
 
 if not configuration.TKINTER_TRACEBACK:
@@ -161,9 +165,9 @@ with VarManager(configuration.CHECKBOX_FILE) as varmanager:
     Button(integrityRightFrame, text='Kontrola súdržnosti', command=integrity).pack(padx=10, pady=10)
 
     # views
-    Button(viewFrame, text=SplinterView.name().upper(), command=lambda: view(SplinterView, 'Splinter View'))\
+    Button(viewFrame, text=SplinterView.name().upper(), command=splinterview)\
         .pack(expand=True, side=LEFT, padx=10, pady=10)
-    Button(viewFrame, text=Overview.name().upper(), command=lambda: view(Overview, 'Overview'))\
+    Button(viewFrame, text=Overview.name().upper(), command=overview)\
         .pack(expand=True, side=LEFT, padx=10, pady=10)
 
     mw.mainloop()
