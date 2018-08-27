@@ -9,21 +9,25 @@ class FindSplinter(TestCase):
         s = Splinter('krokacka', 'krokodil')
         self.assertTrue(s.find_splinter())
         self.assertEqual('krok', s.splinter)
+        self.assertEqual(4, s.length)
 
     def test_1(self):
         s = Splinter('skunkey', 'monkey')
         self.assertTrue(s.find_splinter())
         self.assertEqual('nkey', s.splinter)
+        self.assertEqual(4, s.length)
 
     def test_2(self):
         s = Splinter('abcdefg', 'bce')
         self.assertTrue(s.find_splinter())
         self.assertEqual('bc', s.splinter)
+        self.assertEqual(2, s.length)
 
     def test_3(self):
         s = Splinter(['k', 'æ', 'm', 'p', 't', 'æ', 'ŋ', 'k'], ['k', 'æ', 'm', 'p', 'ə', 'r'])
         self.assertTrue(s.find_splinter())
         self.assertEqual(['k', 'æ', 'm', 'p'], s.splinter)
+        self.assertEqual(4, s.length)
 
 
 class SetSplinter(TestCase):

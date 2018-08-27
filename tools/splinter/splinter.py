@@ -55,12 +55,13 @@ class Splinter:
     def find_splinter(self) -> bool:
         if self.__alignment is not None:
             raise Exception
-        alignment = max(self.__all_alignments(), key=lambda align: align.score)
-        if alignment.score > 0:
-            self.__alignment = alignment
-            return True
-        else:
-            return False
+        aligns = self.__all_alignments()
+        if len(aligns) > 0:
+            alignment = max(aligns, key=lambda align: align.score)
+            if alignment.score > 0:
+                self.__alignment = alignment
+                return True
+        return False
 
     def set_splinter(self, splinter: Sequence) -> bool:
         if self.__alignment is not None:
@@ -123,7 +124,7 @@ class PhoneticSplinter(StringSplinter, metaclass=ABCMeta):
         return ' '.join(s) if s else None
 
 
-class SlovakGraphicSplinter(StringSplinter):
+class SlovakGraphicSplinter(GraphicSplinter):
 
     def __init__(self, namingunit: str, sourceword: str, strict: bool):
         super().__init__(namingunit, sourceword, strict, sk.get_letters_list)
@@ -133,7 +134,7 @@ class SlovakGraphicSplinter(StringSplinter):
         return unidecode(expr).replace('y', 'i')
 
 
-class SlovakPhoneticSplinter(StringSplinter):
+class SlovakPhoneticSplinter(PhoneticSplinter):
 
     def __init__(self, namingunit: str, sourceword: str, strict: bool):
         super().__init__(namingunit, sourceword, strict, sk.get_phones_list)
@@ -143,7 +144,7 @@ class SlovakPhoneticSplinter(StringSplinter):
         return expr.replace(':', '')
 
 
-class EnglishGraphicSplinter(StringSplinter):
+class EnglishGraphicSplinter(GraphicSplinter):
 
     def __init__(self, namingunit: str, sourceword: str, strict: bool):
         super().__init__(namingunit, sourceword, strict, en.get_letters_list)
@@ -153,7 +154,7 @@ class EnglishGraphicSplinter(StringSplinter):
         return unidecode(expr).replace('c', 'k')
 
 
-class EnglishPhoneticSplinter(StringSplinter):
+class EnglishPhoneticSplinter(PhoneticSplinter):
 
     def __init__(self, namingunit: str, sourceword: str, strict: bool):
         super().__init__(namingunit, sourceword, strict, en.get_phones_list)

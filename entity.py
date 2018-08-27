@@ -1,8 +1,10 @@
 from abc import abstractmethod, ABC
 
+import sys
 from syllabiky.syllabiky import split_phrase
 from syllabiky.DbMatcher import DbMatcher
 from tools import sk, en
+from tools.exception import WordSegmentException
 from tools.splinter import SlovakGraphicSplinter, SlovakPhoneticSplinter, EnglishGraphicSplinter, \
     EnglishPhoneticSplinter
 
@@ -195,10 +197,17 @@ class Splinter(Entity):
             for i in range(1, 4+1):
                 sw = self['sw{}_graphic'.format(i)] if graphic else self['sw{}_phonetic'.format(i)]
                 if sw:
-                    s = cls(nu, sw, strict)
-                    if s.find_splinter():
-                        self['G_sw{}_splinter'.format(i)] = s.splinter
-                        self['G_sw{}_splinter_len'.format(i)] = s.length
-                    else:
-                        self['G_sw{}_splinter'.format(i)] = ''
-                        self['G_sw{}_splinter_len'.format(i)] = None
+                    splinter = ''
+                    length = None
+
+                    try:
+                        s = cls(nu, sw, strict)
+                        if s.find_splinter():
+                            splinter = s.splinter
+                            length = s.length
+                    except WordSegmentException as e:
+                        print(e, sys.stderr)
+
+                    self['G_sw{}_splinter'.format(i)] = splinter
+                    self['G_sw{}_splinter_len'.format(i)] = length
+

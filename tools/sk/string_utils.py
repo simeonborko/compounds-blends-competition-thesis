@@ -1,5 +1,9 @@
+from typing import Optional, List
+
 from unidecode import unidecode
 from sys import stderr
+
+from tools.exception import WordSegmentException
 from .phones import PHONES_PATTERN
 from enum import Enum
 
@@ -51,23 +55,27 @@ def count_letters(word, chdzdz=True) -> int:
     return len(get_letters_list(word, chdzdz))
 
 
-def get_phones_list(word, rep_i=True) -> list:
+def __find_phones(word) -> Optional[List[str]]:
+    phones = PHONES_PATTERN.findall(word)
+    return phones if sum(len(phone) for phone in phones) == len(word) else None
+
+
+def get_phones_list(word, rep_i=True) -> List[str]:
     """Ziska zoznam fonem"""
 
     if rep_i:
         word = replace_i(word)
-
     word = remove_redundant(word)
-    phones = PHONES_PATTERN.findall(word)
 
-    if sum(len(phone) for phone in phones) == len(word):
+    phones = __find_phones(word)
+    if phones:
         return phones
-    else:
-        decap = decapitalize(word)
-        if decap != word:
-            return get_phones_list(decap)
-        else:
-            raise Exception(word, phones)
+
+    phones_decap = __find_phones(decapitalize(word))
+    if phones_decap:
+        return phones_decap
+
+    raise WordSegmentException(word, phones)
 
 
 def count_phones(word, rep_i=True):
