@@ -44,13 +44,14 @@ class ExportTestCase(MyTestCase):
         self.assertTrue(view.create_sheet())
         self.assertFalse(view.create_sheet())
         sheet = self.wb[view.name()]
-        self.assertEqual(4, sheet.max_row)
+        self.assertEqual(5, sheet.max_row)
 
         nu_idx = view.fields.index('nu_graphic')
         img_idx = view.fields.index('image_id')
 
         self.assertEqual(
             sorted([
+                ('Aragátor', 7),
                 ('krokacka', 1),
                 ('motylozirafa', 2),
                 ('zirafomotyl', 2)

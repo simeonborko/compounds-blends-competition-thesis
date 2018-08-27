@@ -66,13 +66,16 @@ class SourceWord(Entity):
             self['G_sw_graphic_len'] = en.count_letters(self['sw_graphic'])
 
     def __sw_phonetic_len(self):
+        newval = None
         if self['sw_phonetic']:
-            if self.__lang == 'SK':
-                self['G_sw_phonetic_len'] = sk.count_phones(self['sw_phonetic'])
-            elif self.__lang == 'EN':
-                self['G_sw_phonetic_len'] = en.count_phones(self['sw_phonetic'])
-        else:
-            self['G_sw_phonetic_len'] = None
+            try:
+                if self.__lang == 'SK':
+                    newval = sk.count_phones(self['sw_phonetic'])
+                elif self.__lang == 'EN':
+                    newval = en.count_phones(self['sw_phonetic'])
+            except WordSegmentException:
+                pass
+        self['G_sw_phonetic_len'] = newval
 
     def __sw_syllabic_len(self):
         """najprv zavolat self.__sw_syllabic()"""
@@ -119,13 +122,16 @@ class NamingUnit(Entity):
             self['G_nu_graphic_len'] = en.count_letters(self['nu_graphic'])
 
     def __nu_phonetic_len(self):
+        newval = None
         if self['nu_phonetic']:
-            if self.__lang == 'SK':
-                self['G_nu_phonetic_len'] = sk.count_phones(self['nu_phonetic'])
-            elif self.__lang == 'EN':
-                self['G_nu_phonetic_len'] = en.count_phones(self['nu_phonetic'])
-        else:
-            self['G_nu_phonetic_len'] = None
+            try:
+                if self.__lang == 'SK':
+                    newval = sk.count_phones(self['nu_phonetic'])
+                elif self.__lang == 'EN':
+                    newval = en.count_phones(self['nu_phonetic'])
+            except WordSegmentException:
+                pass
+        self['G_nu_phonetic_len'] = newval
 
     def __nu_syllabic_len(self):
         newval = None
@@ -205,8 +211,8 @@ class Splinter(Entity):
                         if s.find_splinter():
                             splinter = s.splinter
                             length = s.length
-                    except WordSegmentException as e:
-                        print(e, sys.stderr)
+                    except WordSegmentException:
+                        pass
 
                     self['G_sw{}_splinter'.format(i)] = splinter
                     self['G_sw{}_splinter_len'.format(i)] = length
