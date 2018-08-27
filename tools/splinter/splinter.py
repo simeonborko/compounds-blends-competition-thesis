@@ -114,6 +114,9 @@ class StringSplinter(Splinter, metaclass=ABCMeta):
 
 class GraphicSplinter(StringSplinter, metaclass=ABCMeta):
 
+    def __init__(self, namingunit: str, sourceword: str, strict: bool, list_fn: Callable[[str], list]):
+        super().__init__(namingunit.lower(), sourceword.lower(), strict, list_fn)
+
     def set_splinter(self, splinter: str) -> bool:
         return super().set_splinter(self._list_fn(splinter))
 
