@@ -5,7 +5,7 @@ from model import SplinterView, NamingUnitTable, ImageTable, SourceWordTable, Sp
 class SyncManager:
 
     __RULES = defaultdict(tuple)
-    __RULES[SplinterView] = (NamingUnitTable, ImageTable, SourceWordTable, SplinterTable)
+    __RULES[SplinterView] = (NamingUnitTable, SplinterTable)
     __RULES[NamingUnitTable] = (SplinterView,)
     __RULES[ImageTable] = (SplinterView,)
     __RULES[SourceWordTable] = (SplinterView,)
