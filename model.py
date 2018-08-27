@@ -142,7 +142,7 @@ class StaticView(TableLike):
         modified = False
         for db_values, sheet_cells in vals_gen:
             for value, cell in zip(db_values, sheet_cells):
-                if value and cell.value != value:
+                if cell.value != value and (cell.value is not None or value != ''):
                     modified = True
                     cell.value = value
                     cell.fill = self._YELLOWFILL
