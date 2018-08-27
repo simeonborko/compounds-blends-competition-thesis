@@ -4,10 +4,10 @@ from unidecode import unidecode
 from sys import stderr
 
 from tools.exception import WordSegmentException
+from tools.redundant import REDUNDANT
 from .phones import PHONES_PATTERN
 from enum import Enum
 
-REDUNDANT = ' -–,.!"()'
 
 
 def replace_i(word):
