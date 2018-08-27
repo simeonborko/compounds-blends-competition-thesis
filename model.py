@@ -323,7 +323,7 @@ class EditableTableLike(TableLike):
 
             modified = False
             for i in self.__editable:
-                if db_values[i] != sheet_cells[i].value:
+                if db_values[i] != sheet_cells[i].value and (db_values[i] or sheet_cells[i].value):
                     db_values[i] = sheet_cells[i].value
                     modified = True
                     whole_modif = True
@@ -331,7 +331,7 @@ class EditableTableLike(TableLike):
                 self._update(db_values)
 
             for i in self.__generated:
-                if db_values[i] != sheet_cells[i].value:
+                if db_values[i] != sheet_cells[i].value and (db_values[i] or sheet_cells[i].value):
                     sheet_cells[i].value = db_values[i]
                     sheet_cells[i].fill = self._YELLOWFILL
                     whole_modif = True
