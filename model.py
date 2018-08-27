@@ -28,7 +28,7 @@ class TableLike(ABC):
         self._wb = wb
         self.__conn = conn
 
-    def __add_header(self, sheet):
+    def _add_header(self, sheet):
         sheet.append(self._FIELDS)
         emphasized = set(self._emphasized_columns)
         for i in range(len(self._FIELDS)):
@@ -64,7 +64,7 @@ class TableLike(ABC):
         sheet = self._wb.create_sheet(self._NAME)
 
         # nadpisy
-        self.__add_header(sheet)
+        self._add_header(sheet)
 
         # data
         for row in self._execute(self._EXPORT_SELECT).cursor:
@@ -458,7 +458,7 @@ class Table(EditableTableLike, metaclass=ABCMeta):
         sheetname = 'junk {}'.format(self._NAME)
         if sheetname not in self._wb.sheetnames:
             sheet = self._wb.create_sheet(sheetname)
-            self.__add_header(sheet)
+            self._add_header(sheet)
         else:
             sheet = self._wb[sheetname]
 
