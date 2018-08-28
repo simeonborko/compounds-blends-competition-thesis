@@ -25,7 +25,7 @@ class TableLike(ABC):
 
     ExecuteResult = namedtuple('ExecuteResult', ['cursor', 'result'])
 
-    def __init__(self, wb: Workbook, conn, as_affected: bool):
+    def __init__(self, wb: Workbook, conn, as_affected: bool = False):
         self._wb = wb
         self.__conn = conn
         self._as_affected = as_affected
