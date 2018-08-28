@@ -1,5 +1,7 @@
 import warnings
+from datetime import datetime
 from genericpath import isfile
+from shutil import copyfile
 from tkinter import NORMAL, messagebox, DISABLED
 
 from openpyxl import Workbook, load_workbook
@@ -49,6 +51,13 @@ class Disabler:
             checker.configure(state=NORMAL)
 
 
+def backup():
+    copyfile(
+        configuration.XLSX_FILE,
+        configuration.BACKUP_FILE_FMT.format(datetime.now().strftime("%Y-%m-%d--%H-%M-%S"))
+    )
+
+
 def export(clss, widgets):
     with Disabler(**widgets):
         existed = isfile(configuration.XLSX_FILE)
@@ -87,6 +96,7 @@ def export(clss, widgets):
 
 
 def sync(clss, unhighlight: bool, widgets):
+    backup()
     with Disabler(**widgets):
         # kontrola ci subor existuje
         if not isfile(configuration.XLSX_FILE):
@@ -112,6 +122,7 @@ def sync(clss, unhighlight: bool, widgets):
 
 
 def generate(clss, unhighlight: bool, force, corpus, widgets):
+    backup()
     with Disabler(**widgets):
         if not isfile(configuration.XLSX_FILE):
             messagebox.showerror('Chyba', 'Súbor {} neexistuje'.format(configuration.XLSX_FILE))
@@ -136,6 +147,7 @@ def generate(clss, unhighlight: bool, force, corpus, widgets):
 
 
 def integrity(clss, unhighlight: bool, widgets):
+    backup()
     with Disabler(**widgets):
         if not isfile(configuration.XLSX_FILE):
             messagebox.showerror('Chyba', 'Súbor {} neexistuje'.format(configuration.XLSX_FILE))
@@ -167,6 +179,7 @@ def integrity(clss, unhighlight: bool, widgets):
 
 
 def splinterview(cls, unhighlight: bool, widgets):
+    backup()
     with Disabler(**widgets):
         if not isfile(configuration.XLSX_FILE):
             messagebox.showerror('Chyba', 'Súbor {} neexistuje'.format(configuration.XLSX_FILE))
@@ -198,6 +211,7 @@ def splinterview(cls, unhighlight: bool, widgets):
 
 
 def overview(cls, unhighlight: bool, widgets):
+    backup()
     with Disabler(**widgets):
         if not isfile(configuration.XLSX_FILE):
             messagebox.showerror('Chyba', 'Súbor {} neexistuje'.format(configuration.XLSX_FILE))
