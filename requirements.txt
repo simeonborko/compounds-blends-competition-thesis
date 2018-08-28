@@ -1,0 +1,5 @@
+openpyxl
+unidecode
+pymysql
+git+git://github.com/simeonborko/syllabiky.git
+

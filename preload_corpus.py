@@ -1,10 +1,10 @@
+from tools import Connection
 from tools.sk import Corpus
 import configuration
 
-with Corpus(configuration.CORPUS_FILE) as corpus:
-    with open('preload_corpus.txt.csv') as fp:
-        for line in fp:
-            word, lang = line.rstrip().split('\t')
-            if lang == 'SK':
-                print(word)
-                print(corpus.get_frequency(word))
+with Connection() as conn:
+    c = conn.cursor()
+    c.execute("SELECT sw_graphic FROM source_word WHERE survey_language = %s", ('SK',))
+    with Corpus(configuration.CORPUS_FILE) as corpus:
+        for word, in c:
+            print(word, corpus.get_frequency(word))
