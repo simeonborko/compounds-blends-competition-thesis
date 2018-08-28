@@ -109,12 +109,19 @@ class TableLike(ABC):
         keys_sheet_only = sheet_dict.keys() - db_dict.keys()
         keys_both = db_dict.keys() & sheet_dict.keys()
 
-        # odstranit predosle zvyraznenie
         if unhighlight:
+            # odstranit predosle zvyraznenie zmien
             for row in sheet_dict.values():
                 for cell in row:
                     if cell.fill == self._YELLOWFILL or cell.fill.fgColor == self._YELLOWFILL.fgColor:
                         cell.fill = self._NOFILL
+
+            # odstranit zvyraznenie cervenych riadkov, ktore su uz zrazu v DB
+            for key, row in sheet_dict.items():
+                if key in keys_both:
+                    for cell in row:
+                        if cell.fill == self._REDFILL or cell.fill.fgColor == self._REDFILL.fgColor:
+                            cell.fill = self._NOFILL
 
         modified = False
 
