@@ -59,7 +59,7 @@ class SyncManager:
                     affected.extend(cls for cls in potential if cls not in self.__touched)
                 else:
                     self.__stayed.append(obj.__class__)
-            self.__sync([cls(*self.__args) for cls in affected], False)
+            self.__sync([cls(*self.__args, as_affected=True) for cls in affected], False)
 
     def generate(self, unhighlight, **kwargs):
         """Spusti synchronizaciu a generovanie."""

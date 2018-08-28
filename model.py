@@ -1,9 +1,10 @@
 from abc import ABC, ABCMeta, abstractmethod
 import sys
 from collections import namedtuple
-from typing import Iterable, Tuple
+from typing import Iterable, Tuple, List
 
 from openpyxl import Workbook
+from openpyxl.cell import Cell
 from openpyxl.styles import Font, PatternFill
 from pymysql.cursors import DictCursor
 import configuration
@@ -18,15 +19,16 @@ class TableLike(ABC):
     _PRIMARY = None  # pocet stlpcov zo zaciatku
     _EXPORT_SELECT = None
 
-    _REDFILL = PatternFill("solid", fgColor="FF7575")
-    _YELLOWFILL = PatternFill("solid", fgColor="FFFC75")
+    _REDFILL = PatternFill("solid", fgColor="FFFF7575")
+    _YELLOWFILL = PatternFill("solid", fgColor="FFFFFC75")
     _NOFILL = PatternFill()
 
     ExecuteResult = namedtuple('ExecuteResult', ['cursor', 'result'])
 
-    def __init__(self, wb: Workbook, conn):
+    def __init__(self, wb: Workbook, conn, as_affected: bool):
         self._wb = wb
         self.__conn = conn
+        self._as_affected = as_affected
 
     def _add_header(self, sheet):
         sheet.append(self._FIELDS)
@@ -48,6 +50,25 @@ class TableLike(ABC):
         c = self.__conn.cursor(**kwargs)
         res = c.executemany(*args) or 0
         return self.ExecuteResult(c, res)
+
+    @classmethod
+    def _update_in_sheet(cls, db_values: list, sheet_cells: List[Cell], indices: Iterable[int]) -> bool:
+        modified = False
+        for i in indices:
+            if db_values[i] != sheet_cells[i].value and (db_values[i] or sheet_cells[i].value):
+                sheet_cells[i].value = db_values[i]
+                sheet_cells[i].fill = cls._YELLOWFILL
+                modified = True
+        return modified
+
+    @staticmethod
+    def _update_in_db(db_values: list, sheet_cells: List[Cell], indices: Iterable[int]) -> bool:
+        modified = False
+        for i in indices:
+            if db_values[i] != sheet_cells[i].value and (db_values[i] or sheet_cells[i].value):
+                db_values[i] = sheet_cells[i].value
+                modified = True
+        return modified
 
     @abstractmethod
     def _sync(self, vals_gen) -> bool:
@@ -92,7 +113,7 @@ class TableLike(ABC):
         if unhighlight:
             for row in sheet_dict.values():
                 for cell in row:
-                    if cell.fill == self._YELLOWFILL:
+                    if cell.fill == self._YELLOWFILL or cell.fill.fgColor == self._YELLOWFILL.fgColor:
                         cell.fill = self._NOFILL
 
         modified = False
@@ -140,12 +161,10 @@ class StaticView(TableLike):
     def _sync(self, vals_gen):
         """Nahradi hodnoty v SHEETE hodnotami z DB"""
         modified = False
+        indices = range(len(self._FIELDS))
         for db_values, sheet_cells in vals_gen:
-            for value, cell in zip(db_values, sheet_cells):
-                if cell.value != value and (cell.value is not None or value != ''):
-                    modified = True
-                    cell.value = value
-                    cell.fill = self._YELLOWFILL
+            if self._update_in_sheet(db_values, sheet_cells, indices):
+                modified = True
         return modified
 
 
@@ -289,8 +308,8 @@ class EditableTableLike(TableLike):
     _EXCLUDE_EDITABLE = None
     _INCLUDE_EDITABLE = None
 
-    def __init__(self, wb: Workbook, conn):
-        super().__init__(wb, conn)
+    def __init__(self, wb: Workbook, conn, as_affected: bool):
+        super().__init__(wb, conn, as_affected)
         self.__editable, self.__generated = self.__split_fields()
 
     @staticmethod
@@ -317,26 +336,23 @@ class EditableTableLike(TableLike):
         return set(super()._emphasized_columns) | set(self.__generated)
 
     def _sync(self, vals_gen):
-        whole_modif = False
+        modified = False
 
-        for db_values, sheet_cells in vals_gen:
-
-            modified = False
-            for i in self.__editable:
-                if db_values[i] != sheet_cells[i].value and (db_values[i] or sheet_cells[i].value):
-                    db_values[i] = sheet_cells[i].value
+        if self._as_affected:
+            indices = range(len(self._FIELDS))
+            for db_values, sheet_cells in vals_gen:
+                if self._update_in_sheet(db_values, sheet_cells, indices):
                     modified = True
-                    whole_modif = True
-            if modified:
-                self._update(db_values)
 
-            for i in self.__generated:
-                if db_values[i] != sheet_cells[i].value and (db_values[i] or sheet_cells[i].value):
-                    sheet_cells[i].value = db_values[i]
-                    sheet_cells[i].fill = self._YELLOWFILL
-                    whole_modif = True
+        else:
+            for db_values, sheet_cells in vals_gen:
+                if self._update_in_db(db_values, sheet_cells, self.__editable):
+                    self._update(db_values)
+                    modified = True
+                if self._update_in_sheet(db_values, sheet_cells, self.__generated):
+                    modified = True
 
-        return whole_modif
+        return modified
 
     @abstractmethod
     def _update(self, datarow):
@@ -364,8 +380,8 @@ class Table(EditableTableLike, metaclass=ABCMeta):
     # select na riadky, ake primarne kluce maju byt v danej tabulke
     _INTEGRITY_SELECT = None
 
-    def __init__(self, wb: Workbook, conn, fields=None):
-        super().__init__(wb, conn)
+    def __init__(self, wb: Workbook, conn, as_affected: bool = False, fields=None):
+        super().__init__(wb, conn, as_affected)
         self._EXPORT_SELECT = "SELECT {} FROM {}".format(','.join(self._FIELDS), self._NAME)
         if self._GENERATE_SELECT_ALL is None:  # SplinterTable ma _GENERATE_SELECT_ALL v triede, nie v inite
             self._GENERATE_SELECT_ALL = "SELECT * FROM {}".format(self._NAME)  # treba *, nestaci self._FIELDS
@@ -715,7 +731,7 @@ class SplinterView(EditableTableLike):
 
     __SPL_TYPES = ('gs', 'gm', 'ps', 'pm')
 
-    def __init__(self, wb, conn):
+    def __init__(self, wb, conn, as_affected: bool = False):
 
         self.__SPL_FIELDS = tuple(f for f in self.__SPL_FIELDS_ALL if f not in self.__SPL_FIELDS_EXTRA)
 
@@ -723,10 +739,10 @@ class SplinterView(EditableTableLike):
         self._EXCLUDE_EDITABLE.update(static_fields)
         self._EXPORT_SELECT = self.__create_export_select(select_fields)
 
-        super().__init__(wb, conn)  # vyzaduje _FIELDS
+        super().__init__(wb, conn, as_affected)  # vyzaduje _FIELDS
 
-        self.__nu_table = NamingUnitTable(wb, conn, self.__NU_FIELDS_ALL)
-        self.__spl_table = SplinterTable(wb, conn, self.__SPL_FIELDS_ALL)
+        self.__nu_table = NamingUnitTable(wb, conn, as_affected, self.__NU_FIELDS_ALL)
+        self.__spl_table = SplinterTable(wb, conn, as_affected, self.__SPL_FIELDS_ALL)
 
         self.__indices = self.__create_indices()  # splinter indices
 
