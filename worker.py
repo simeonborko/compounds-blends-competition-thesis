@@ -9,6 +9,7 @@ from openpyxl import Workbook, load_workbook
 import configuration
 from syncmanager import SyncManager
 from tools import Connection
+from tools.exception import ResponseDuplicatesException, ResponseTypeError
 
 
 def __msg(syncmanager: SyncManager, msgs=None) -> str:
@@ -96,12 +97,12 @@ def export(clss, widgets):
 
 
 def sync(clss, unhighlight: bool, widgets):
-    backup()
     with Disabler(**widgets):
         # kontrola ci subor existuje
         if not isfile(configuration.XLSX_FILE):
             messagebox.showerror('Chyba', 'Súbor {} neexistuje'.format(configuration.XLSX_FILE))
             return
+        backup()
 
         if len(clss) == 0:
             messagebox.showwarning(
@@ -122,11 +123,11 @@ def sync(clss, unhighlight: bool, widgets):
 
 
 def generate(clss, unhighlight: bool, force, corpus, widgets):
-    backup()
     with Disabler(**widgets):
         if not isfile(configuration.XLSX_FILE):
             messagebox.showerror('Chyba', 'Súbor {} neexistuje'.format(configuration.XLSX_FILE))
             return
+        backup()
 
         if len(clss) == 0:
             messagebox.showwarning(
@@ -147,11 +148,11 @@ def generate(clss, unhighlight: bool, force, corpus, widgets):
 
 
 def integrity(clss, unhighlight: bool, widgets):
-    backup()
     with Disabler(**widgets):
         if not isfile(configuration.XLSX_FILE):
             messagebox.showerror('Chyba', 'Súbor {} neexistuje'.format(configuration.XLSX_FILE))
             return
+        backup()
 
         if len(clss) == 0:
             messagebox.showwarning(
@@ -179,11 +180,11 @@ def integrity(clss, unhighlight: bool, widgets):
 
 
 def splinterview(cls, unhighlight: bool, widgets):
-    backup()
     with Disabler(**widgets):
         if not isfile(configuration.XLSX_FILE):
             messagebox.showerror('Chyba', 'Súbor {} neexistuje'.format(configuration.XLSX_FILE))
             return
+        backup()
 
         title = 'Splinter View'
 
@@ -211,11 +212,11 @@ def splinterview(cls, unhighlight: bool, widgets):
 
 
 def overview(cls, unhighlight: bool, widgets):
-    backup()
     with Disabler(**widgets):
         if not isfile(configuration.XLSX_FILE):
             messagebox.showerror('Chyba', 'Súbor {} neexistuje'.format(configuration.XLSX_FILE))
             return
+        backup()
 
         title = 'Overview'
 
@@ -240,3 +241,45 @@ def overview(cls, unhighlight: bool, widgets):
             wb.save(configuration.XLSX_FILE)
 
             messagebox.showinfo(title, __msg(syncmanager))
+
+
+def responseview(cls, unhighlight: bool, widgets):
+    with Disabler(**widgets):
+        if not isfile(configuration.XLSX_FILE):
+            messagebox.showerror('Chyba', 'Súbor {} neexistuje'.format(configuration.XLSX_FILE))
+            return
+        backup()
+        title = 'Response'
+
+        wb = load_workbook(configuration.XLSX_FILE)
+        with Connection() as conn:
+            obj = cls(wb, conn)
+            if not obj.integrity_kept:
+                messagebox.showerror(title, 'Chyba. Volaj Simeona.')
+                return
+
+            # ak neexistuje, vytvorime
+            if cls.name() not in wb.sheetnames:
+                if cls(wb, conn).create_sheet():
+                    wb.save(configuration.XLSX_FILE)
+                    messagebox.showinfo(title, 'Hárok bol vytvorený')
+                else:
+                    messagebox.showerror(title, 'Hárok sa nepodarilo vytvoriť')
+
+            else:
+                try:
+                    syncmanager = SyncManager([cls], wb, conn)
+                    syncmanager.sync(unhighlight)
+                    conn.commit()
+                    wb.save(configuration.XLSX_FILE)
+                    messagebox.showinfo(title, __msg(syncmanager))
+                except ResponseDuplicatesException as e:
+                    messagebox.showerror(title, 'Chyba - našli sa duplikáty:\n\n{}'.format(
+                        '\n'.join('- ' + str(r) for r in e.args[0])
+                    ))
+                except ResponseTypeError as e:
+                    messagebox.showerror(
+                        title,
+                        'Chyba: {}\n\nPravdepodobne má hárok v stĺpci respondent_id číselnú hodnotu, čo je chyba.'
+                        .format(str(e))
+                    )

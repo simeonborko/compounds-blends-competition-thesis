@@ -1,15 +1,18 @@
 from abc import ABC, ABCMeta, abstractmethod
 import sys
 from collections import namedtuple
-from typing import Iterable, Tuple, List
+from itertools import groupby
+from typing import Iterable, Tuple, List, Set
 
 from openpyxl import Workbook
 from openpyxl.cell import Cell
 from openpyxl.styles import Font, PatternFill
+from openpyxl.worksheet import Worksheet
 from pymysql.cursors import DictCursor
 import configuration
 from entity import SourceWord, NamingUnit, Splinter
 from tools import sk
+from tools.exception import ResponseDuplicatesException, ResponseTypeError
 
 
 class TableLike(ABC):
@@ -78,6 +81,10 @@ class TableLike(ABC):
         """
         pass
 
+    @staticmethod
+    def _same_fill(cell: Cell, fill: PatternFill) -> bool:
+        return cell.fill == fill or cell.fill.fgColor == fill.fgColor
+
     def create_sheet(self) -> bool:
         if self.sheet_created:
             return False
@@ -94,6 +101,7 @@ class TableLike(ABC):
         return True
 
     def sync(self, unhighlight: bool = False) -> bool:
+
         # ziskat zaznamy z DB
         db_dict = {dbvals[:self._PRIMARY]: list(dbvals) for dbvals in self._execute(self._EXPORT_SELECT).cursor}
 
@@ -105,23 +113,23 @@ class TableLike(ABC):
         }
 
         # porovnat mnoziny klucov
-        keys_db_only = db_dict.keys() - sheet_dict.keys()
-        keys_sheet_only = sheet_dict.keys() - db_dict.keys()
-        keys_both = db_dict.keys() & sheet_dict.keys()
+        keys_db_only = set(db_dict.keys()) - set(sheet_dict.keys())
+        keys_sheet_only = set(sheet_dict.keys()) - set(db_dict.keys())
+        keys_both = set(db_dict.keys()) & set(sheet_dict.keys())
 
         if unhighlight:
             # odstranit predosle zvyraznenie zmien
             for row in sheet_dict.values():
                 for cell in row:
-                    if cell.fill == self._YELLOWFILL or cell.fill.fgColor == self._YELLOWFILL.fgColor:
+                    if self._same_fill(cell, self._YELLOWFILL):
                         cell.fill = self._NOFILL
 
-            # odstranit zvyraznenie cervenych riadkov, ktore su uz zrazu v DB
-            for key, row in sheet_dict.items():
-                if key in keys_both:
-                    for cell in row:
-                        if cell.fill == self._REDFILL or cell.fill.fgColor == self._REDFILL.fgColor:
-                            cell.fill = self._NOFILL
+        # odstranit zvyraznenie cervenych riadkov, ktore su uz zrazu v DB
+        for key, row in sheet_dict.items():
+            if key in keys_both:
+                for cell in row:
+                    if self._same_fill(cell, self._REDFILL):
+                        cell.fill = self._NOFILL
 
         modified = False
 
@@ -139,7 +147,7 @@ class TableLike(ABC):
         if len(keys_sheet_only) > 0:
             for key in keys_sheet_only:
                 for cell in sheet_dict[key]:
-                    if cell.fill != self._REDFILL:
+                    if not self._same_fill(cell, self._REDFILL):
                         cell.fill = self._REDFILL
                         modified = True
 
@@ -315,7 +323,7 @@ class EditableTableLike(TableLike):
     _EXCLUDE_EDITABLE = None
     _INCLUDE_EDITABLE = None
 
-    def __init__(self, wb: Workbook, conn, as_affected: bool):
+    def __init__(self, wb: Workbook, conn, as_affected: bool=False):
         super().__init__(wb, conn, as_affected)
         self.__editable, self.__generated = self.__split_fields()
 
@@ -547,7 +555,27 @@ class NamingUnitTable(Table):
   or survey_language='SK' and G_nu_syllabic_len is null
   or survey_language='EN' and nu_phonetic is not null and G_nu_syllabic_len is null""".format(_NAME)
 
-    _INTEGRITY_SELECT = "SELECT DISTINCT {} FROM response NATURAL JOIN respondent".format(', '.join(_FIELDS[:_PRIMARY]))
+    _INTEGRITY_SELECT = "SELECT DISTINCT {} FROM ({}) TBL NATURAL JOIN respondent".format(
+        ', '.join(_FIELDS[:_PRIMARY]),
+        [
+            """SELECT respondent_id, image_id, nu_original nu_graphic
+  FROM (
+    SELECT O.respondent_id, O.image_id, nu_original, nu_modified
+    FROM response_original O
+    LEFT JOIN response_modified M
+      ON O.respondent_id=M.respondent_id AND O.image_id=M.image_id
+  ) A
+  WHERE nu_modified IS NULL
+  UNION
+  SELECT respondent_id, image_id, nu_modified nu_graphic FROM response_modified""",
+            """SELECT respondent_id, image_id, nu_original nu_graphic FROM response_original O
+  WHERE (
+    SELECT COUNT(*) FROM response_modified TMP WHERE O.respondent_id=TMP.respondent_id AND O.image_id=TMP.image_id
+  ) = 0
+  UNION
+  SELECT respondent_id, image_id, nu_modified nu_graphic FROM response_modified"""
+        ][0]  # TODO vyskusat, ktory z tychto dvoch je rychlejsi
+    )
 
     def generate(self, force, **kwargs) -> int:
         return self._generate(force, NamingUnit)
@@ -561,12 +589,6 @@ class RespondentTable(Table):
         'responding_date'
     )
     _PRIMARY = 1
-
-
-class ResponseTable(Table):
-    _NAME = 'response'
-    _FIELDS = ('respondent_id', 'image_id', 'nu_graphic')
-    _PRIMARY = 3
 
 
 class SourceWordTable(Table):
@@ -910,3 +932,177 @@ class SplinterView(EditableTableLike):
     OR PS.type_of_splinter IS NULL OR PM.type_of_splinter IS NULL"""
 
         return self._execute(query).cursor.fetchone()[0] == 0
+
+
+class ResponseView(EditableTableLike):
+
+    _NAME = 'response'
+
+    _FIELDS = ('respondent_id', 'image_id', 'nu_original', 'nu_modified')
+
+    _PRIMARY = 4
+
+    _EXPORT_SELECT = """
+SELECT O.respondent_id, O.image_id, nu_original, nu_modified
+FROM response_original O
+LEFT JOIN response_modified M ON O.respondent_id=M.respondent_id AND O.image_id=M.image_id
+"""
+
+    @property
+    def _emphasized_columns(self) -> Iterable[int]:
+        return range(3)  # nu_modified je technicky primarny, ale moze sa upravovat
+
+    def _update(self, datarow):
+        raise NotImplementedError
+
+    def __sync_modified(self, sheet: Worksheet, db_keys: Set[Tuple[str, int]]) -> bool:
+        """
+        Synchronizuje databazovu tabulku `response_modified`.
+        :param sheet: harok
+        :param db_keys: dvojice (respondent_id, image_id) z databazovej tabulky response_original
+        :raise ResponseDuplicatesException: Ak su v SHEETE duplikaty; parameter je zoznam duplikatov.
+        :raise ResponseTypeError: Ak sa pri zoradzovani riadkov v SHEETE vyskytne TypeError.
+        :return: pridali alebo zmazali sa riadky v DB?
+        """
+        modified = False
+        # (respondent_id, image_id, nu_modified)
+        db_set = set(self._execute("SELECT respondent_id, image_id, nu_modified FROM response_modified").cursor)
+
+        # (respondent_id, image_id, nu_modified)
+        try:
+            # filtrovanie je dolezite kvoli tomu, aby sa do databazovej tabulky response_modified nanahral zaznam
+            # s dvojicou (respondent_id, image_id), ktora nie je v databazovej tabulke respondent_original
+            sheet_rows = sorted(filter(
+                lambda row: row[:2] in db_keys,
+                ((row[0].value, row[1].value, row[3].value) for row in sheet.iter_rows(min_row=2) if row[3].value)
+            ))
+        except TypeError as e:
+            raise ResponseTypeError(*e.args)
+
+        duplicates = [key for key, group in groupby(sheet_rows) if len(list(group)) > 1]
+        if len(duplicates) > 0:
+            raise ResponseDuplicatesException(duplicates)
+
+        # (respondent_id, image_id, nu_modified)
+        sheet_set = set(sheet_rows)
+
+        db_items_only = db_set - sheet_set
+        sheet_items_only = sheet_set - db_set
+
+        # co nie je v SHEET -> zmazat v DB
+        if len(db_items_only) > 0:
+            res = self._executemany(
+                "DELETE FROM response_modified WHERE respondent_id = %s AND image_id = %s AND nu_modified = %s",
+                list(db_items_only)  # v API je sequence of sequences; set nie je sequence
+            )
+            if res.result > 0:
+                modified = True
+
+        # co nie je v DB -> pridat do DB
+        if len(sheet_items_only) > 0:
+            res = self._executemany(
+                "INSERT INTO response_modified (respondent_id, image_id, nu_modified) VALUES (%s, %s, %s)",
+                list(sheet_items_only)
+            )
+            if res.result > 0:
+                modified = True
+
+        return modified
+
+    def __sync_original(self, sheet: Worksheet) -> (bool, Set[Tuple[str, int]]):
+        """
+        Synchronizuje databazovu tabulku response_original, ktora je read-only.
+        :param sheet: harok
+        :return: udiala sa nejaka zmena?
+        """
+
+        modified = False
+
+        # (respondent_id, image_id) -> nu_original
+        db_dict = {dbvals[:2]: dbvals[2] for dbvals in self._execute(
+            "SELECT respondent_id, image_id, nu_original FROM response_original"
+        ).cursor}
+
+        # (respondent_id, image_id) -> [List[Cell]]
+        sheet_dict = {
+            k: list(g) for k, g in groupby(
+                sorted(sheet.iter_rows(min_row=2), key=lambda r: (r[0].value, r[1].value)),
+                key=lambda r: (r[0].value, r[1].value)
+            )
+        }
+
+        # porovnat mnoziny klucov
+        keys_db_only = set(db_dict.keys()) - set(sheet_dict.keys())
+        keys_sheet_only = set(sheet_dict.keys()) - set(db_dict.keys())
+        keys_both = set(db_dict.keys()) & set(sheet_dict.keys())
+
+        # co su iba v DB, pridat zlto
+        if len(keys_db_only) > 0:
+            modified = True
+            starting_row = sheet.max_row + 1
+            for key in keys_db_only:
+                sheet.append([*key, db_dict[key], None])
+            for row in sheet.iter_rows(min_row=starting_row):
+                for cell in row:
+                    cell.fill = self._YELLOWFILL
+
+        # co su iba v SHEET, ofarbit cerveno
+        if len(keys_sheet_only) > 0:
+            for key in keys_sheet_only:
+                for row in sheet_dict[key]:
+                    for cell in row:
+                        if not self._same_fill(cell, self._REDFILL):
+                            cell.fill = self._REDFILL
+                            modified = True
+
+        # co su aj aj, skontrolovat ci sa neurobil preklep v nu_original
+        if len(keys_both) > 0:
+            for key in keys_both:
+                nu = db_dict[key]
+                for row in sheet_dict[key]:
+                    cell = row[2]  # nu_original
+                    if cell.value != nu:
+                        cell.value = nu
+                        cell.fill = self._YELLOWFILL
+                        modified = True
+
+        return modified, set(db_dict.keys())
+
+    def sync(self, unhighlight: bool = False) -> bool:
+
+        sheet = self._wb[self._NAME]
+
+        # odstranit zvyraznenie minulych zmien
+        if unhighlight:
+            for row in sheet.iter_rows(min_row=2):
+                for cell in row:
+                    if self._same_fill(cell, self._YELLOWFILL):
+                        cell.fill = self._NOFILL
+
+        modified = False
+
+        res, db_keys = self.__sync_original(sheet)
+
+        if res:
+            modified = True
+
+        if self.__sync_modified(sheet, db_keys):
+            modified = True
+
+        return modified
+
+    @property
+    def integrity_kept(self) -> bool:
+        resultrow = self._execute("""
+SELECT
+  (
+    SELECT COUNT(*) FROM respondent R
+    LEFT JOIN response_original O ON R.respondent_id = O.respondent_id
+    WHERE O.respondent_id IS NULL
+  ) + (
+    SELECT COUNT(*) FROM respondent R
+    RIGHT JOIN response_original O ON R.respondent_id = O.respondent_id
+    WHERE R.respondent_id IS NULL
+  ) = 0 AS integrity_kept
+""").cursor.fetchone()
+        return resultrow[0] == 1

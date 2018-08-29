@@ -4,13 +4,13 @@ from tkinter import *
 
 from varmanager import VarManager
 from widgetmanager import WidgetManager
-from model import ImageTable, LanguageTable, NamingUnitTable, RespondentTable, ResponseTable, SourceWordTable,\
-    SplinterTable, SplinterView, Overview
+from model import ImageTable, LanguageTable, NamingUnitTable, RespondentTable, SourceWordTable, \
+    SplinterTable, SplinterView, Overview, ResponseView
 import configuration
 import worker
 
 
-SYNC_CLSS = (ImageTable, LanguageTable, NamingUnitTable, RespondentTable, ResponseTable, SourceWordTable, SplinterTable)
+SYNC_CLSS = (ImageTable, LanguageTable, NamingUnitTable, RespondentTable, SourceWordTable, SplinterTable)
 GEN_CLSS = (
     NamingUnitTable,
     SourceWordTable,
@@ -59,6 +59,10 @@ def splinterview():
 
 def overview():
     threading.Thread(target=worker.overview, args=(Overview, unhighlight(), widgetmanager.widgets)).start()
+
+
+def responseview():
+    threading.Thread(target=worker.responseview, args=(ResponseView, unhighlight(), widgetmanager.widgets)).start()
 
 
 if not configuration.TKINTER_TRACEBACK:
@@ -165,6 +169,8 @@ with VarManager(configuration.CHECKBOX_FILE) as varmanager:
     Button(integrityRightFrame, text='Kontrola súdržnosti', command=integrity).pack(padx=10, pady=10)
 
     # views
+    Button(viewFrame, text=ResponseView.name().upper(), command=responseview)\
+        .pack(expand=True, side=LEFT, padx=10, pady=10)
     Button(viewFrame, text=SplinterView.name().upper(), command=splinterview)\
         .pack(expand=True, side=LEFT, padx=10, pady=10)
     Button(viewFrame, text=Overview.name().upper(), command=overview)\
