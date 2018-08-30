@@ -13,16 +13,19 @@ def response_info():
             next(reader)
             next(reader)
             for l in reader:
-                respondent_id = l[0]
+                respondent_id = l[0].strip()
                 for image_id, naming_unit in enumerate(l[10:45], 1):
-                    data.append([respondent_id, image_id, naming_unit])
+                    data.append([respondent_id, image_id, naming_unit.strip()])
     return data
 
 
 with Connection() as conn:
+
+    conn.cursor().execute("DELETE FROM response_original")
+
     data = response_info()
     conn.cursor().executemany(
-        'INSERT INTO response (respondent_id, image_id, naming_unit) VALUES (%s,%s,%s)',
+        'INSERT INTO response_original (respondent_id, image_id, nu_original) VALUES (%s,%s,%s)',
         data
     )
     conn.commit()
