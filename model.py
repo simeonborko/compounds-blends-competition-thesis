@@ -955,6 +955,19 @@ LEFT JOIN response_modified M ON O.respondent_id=M.respondent_id AND O.image_id=
     def _update(self, datarow):
         raise NotImplementedError
 
+    @staticmethod
+    def __sheet_rows_013(sheet: Worksheet):
+        """Vrati generator na (respondent_id: str, image_id: int, nu_modified: str), kde nu_modified je vyplnene."""
+        return (
+            (str(row[0].value), int(row[1].value), str(row[3].value))
+            for row in sheet.iter_rows(min_row=2)
+            if row[3].value
+        )
+
+    @staticmethod
+    def __row_groupby_key(row: List[Cell]) -> (str, int):
+        return str(row[0].value), int(row[1].value)
+
     def __sync_modified(self, sheet: Worksheet, db_keys: Set[Tuple[str, int]]) -> bool:
         """
         Synchronizuje databazovu tabulku `response_modified`.
@@ -974,7 +987,7 @@ LEFT JOIN response_modified M ON O.respondent_id=M.respondent_id AND O.image_id=
             # s dvojicou (respondent_id, image_id), ktora nie je v databazovej tabulke respondent_original
             sheet_rows = sorted(filter(
                 lambda row: row[:2] in db_keys,
-                ((row[0].value, row[1].value, row[3].value) for row in sheet.iter_rows(min_row=2) if row[3].value)
+                self.__sheet_rows_013(sheet)
             ))
         except TypeError as e:
             raise ResponseTypeError(*e.args)
@@ -1024,12 +1037,15 @@ LEFT JOIN response_modified M ON O.respondent_id=M.respondent_id AND O.image_id=
         ).cursor}
 
         # (respondent_id, image_id) -> [List[Cell]]
-        sheet_dict = {
-            k: list(g) for k, g in groupby(
-                sorted(sheet.iter_rows(min_row=2), key=lambda r: (r[0].value, r[1].value)),
-                key=lambda r: (r[0].value, r[1].value)
-            )
-        }
+        try:
+            sheet_dict = {
+                k: list(g) for k, g in groupby(
+                    sorted(sheet.iter_rows(min_row=2), key=self.__row_groupby_key),
+                    key=self.__row_groupby_key
+                )
+            }
+        except TypeError as e:
+            raise ResponseTypeError(*e.args)
 
         # porovnat mnoziny klucov
         keys_db_only = set(db_dict.keys()) - set(sheet_dict.keys())
