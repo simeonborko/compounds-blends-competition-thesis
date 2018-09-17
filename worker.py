@@ -122,7 +122,7 @@ def sync(clss, unhighlight: bool, widgets):
         messagebox.showinfo('Synchronizácia', __msg(syncmanager))
 
 
-def generate(clss, unhighlight: bool, force, corpus, widgets):
+def generate(clss, unhighlight: bool, force, corpus, cambridge, widgets):
     with Disabler(**widgets):
         if not isfile(configuration.XLSX_FILE):
             messagebox.showerror('Chyba', 'Súbor {} neexistuje'.format(configuration.XLSX_FILE))
@@ -139,7 +139,7 @@ def generate(clss, unhighlight: bool, force, corpus, widgets):
         wb = load_workbook(configuration.XLSX_FILE)
         with Connection() as conn:
             syncmanager = SyncManager(clss, wb, conn)
-            syncmanager.generate(unhighlight, force=force, corpus=corpus)
+            syncmanager.generate(unhighlight, force=force, corpus=corpus, cambridge=cambridge)
             conn.commit()
 
         wb.save(configuration.XLSX_FILE)

@@ -11,7 +11,7 @@ from openpyxl.worksheet import Worksheet
 from pymysql.cursors import DictCursor
 import configuration
 from entity import SourceWord, NamingUnit, Splinter
-from tools import sk
+from tools import sk, en
 from tools.exception import ResponseDuplicatesException, ResponseTypeError
 
 
@@ -598,7 +598,7 @@ class RespondentTable(Table):
 class SourceWordTable(Table):
     _NAME = 'source_word'
     _FIELDS = ('sw_graphic', 'first_language', 'survey_language',
-               'source_language', 'proper_name', 'sw_phonetic', 'sw_word_class',
+               'source_language', 'proper_name', 'sw_phonetic', 'G_sw_phonetic', 'sw_word_class',
                'sw_syllabic', 'G_sw_syllabic', 'G_sw_syllabic__ignore',
                'sw_graphic_len', 'G_sw_graphic_len',
                'sw_phonetic_len', 'G_sw_phonetic_len',
@@ -611,7 +611,8 @@ class SourceWordTable(Table):
   or sw_phonetic is not null and G_sw_phonetic_len is null
   or survey_language='SK' and G_sw_syllabic_len is null
   or survey_language='EN' and sw_phonetic is not null and G_sw_syllabic_len is null
-  or survey_language='SK' and frequency_in_snc is null""".format(_NAME)
+  or survey_language='SK' and frequency_in_snc is null
+  or survey_language='EN' and G_sw_phonetic is null""".format(_NAME)
 
     _INTEGRITY_SELECT = ' UNION '.join(
         'SELECT {0} sw_graphic, first_language, survey_language FROM naming_unit WHERE {0} IS NOT NULL'.format(
@@ -624,14 +625,28 @@ class SourceWordTable(Table):
     # UNION SELECT sw4_graphic, first_language, survey_language from naming_unit WHERE sw4_graphic is not null
 
     def generate(self, force, **kwargs) -> int:
-        if kwargs['corpus']:
+        if kwargs['corpus'] and kwargs['cambridge']:
+            with sk.Corpus(configuration.CORPUS_FILE) as corpus:
+                with en.TranscriptionManager() as trans_man:
+                    SourceWord.TRANSCRIPTION_MANAGER = trans_man
+                    SourceWord.CORPUS = corpus
+                    affected = self._generate(force, SourceWord)
+                    SourceWord.CORPUS = None
+                    SourceWord.TRANSCRIPTION_MANAGER = None
+        elif kwargs['corpus']:
             with sk.Corpus(configuration.CORPUS_FILE) as corpus:
                 SourceWord.CORPUS = corpus
                 affected = self._generate(force, SourceWord)
                 SourceWord.CORPUS = None
-            return affected
+        elif kwargs['cambridge']:
+            with en.TranscriptionManager() as trans_man:
+                SourceWord.TRANSCRIPTION_MANAGER = trans_man
+                affected = self._generate(force, SourceWord)
+                SourceWord.TRANSCRIPTION_MANAGER = None
         else:
-            return self._generate(force, SourceWord)
+            affected = self._generate(force, SourceWord)
+
+        return affected
 
 
 class SplinterTable(Table):

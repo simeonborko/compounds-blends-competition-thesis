@@ -1,4 +1,4 @@
-CREATE VIEW `overview` AS
+CREATE OR REPLACE VIEW `overview` AS
   select
     `RS`.`respondent_id` AS `respondent_id`,
     `RT`.`age` AS `age`,

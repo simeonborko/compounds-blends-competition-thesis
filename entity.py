@@ -1,6 +1,5 @@
 from abc import abstractmethod, ABC
 
-import sys
 from syllabiky.syllabiky import split_phrase
 from syllabiky.DbMatcher import DbMatcher
 from tools import sk, en
@@ -44,11 +43,16 @@ class Entity(ABC):
 class SourceWord(Entity):
 
     CORPUS = None  # corpus ma nastavit volajuci
+    TRANSCRIPTION_MANAGER = None  # ma nastavit volajuci
     __MATCHER = DbMatcher()
 
     def __init__(self, table, data: dict):
         super().__init__(table, data)
         self.__lang = self['survey_language']
+
+    def __sw_phonetic(self):
+        if self.__lang == 'EN' and self.TRANSCRIPTION_MANAGER is not None:
+            self['G_sw_phonetic'] = self.TRANSCRIPTION_MANAGER[self['sw_graphic']]
 
     def __sw_syllabic(self):
         if self.__lang == 'SK':
@@ -91,6 +95,7 @@ class SourceWord(Entity):
             self['frequency_in_snc'] = self.CORPUS.get_frequency(self['sw_graphic'])
 
     def generate(self):
+        self.__sw_phonetic()
         self.__sw_syllabic()
         self.__sw_graphic_len()
         self.__sw_phonetic_len()
