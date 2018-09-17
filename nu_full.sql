@@ -1,4 +1,4 @@
-CREATE VIEW `nu_full` AS
+CREATE OR REPLACE VIEW `nu_full` AS
   select
     `NU`.`nu_graphic` AS `nu_graphic`,
     `NU`.`first_language` AS `first_language`,
@@ -28,6 +28,10 @@ CREATE VIEW `nu_full` AS
     `SW2`.`source_language` AS `sw2_source_language`,
     `SW3`.`source_language` AS `sw3_source_language`,
     `SW4`.`source_language` AS `sw4_source_language`,
+    SW1.proper_name AS sw1_proper_name,
+    SW2.proper_name AS sw2_proper_name,
+    SW3.proper_name AS sw3_proper_name,
+    SW4.proper_name AS sw4_proper_name,
     `SW1`.`sw_graphic_len` AS `sw1_graphic_len`,
     `SW2`.`sw_graphic_len` AS `sw2_graphic_len`,
     `SW3`.`sw_graphic_len` AS `sw3_graphic_len`,
