@@ -218,6 +218,10 @@ class Overview(StaticView):
         'sw2_source_language',
         'sw3_source_language',
         'sw4_source_language',
+        'sw1_proper_name',
+        'sw2_proper_name',
+        'sw3_proper_name',
+        'sw4_proper_name',
         'sw1_graphic_len',
         'sw2_graphic_len',
         'sw3_graphic_len',
@@ -594,7 +598,7 @@ class RespondentTable(Table):
 class SourceWordTable(Table):
     _NAME = 'source_word'
     _FIELDS = ('sw_graphic', 'first_language', 'survey_language',
-               'source_language', 'sw_phonetic', 'sw_word_class',
+               'source_language', 'proper_name', 'sw_phonetic', 'sw_word_class',
                'sw_syllabic', 'G_sw_syllabic', 'G_sw_syllabic__ignore',
                'sw_graphic_len', 'G_sw_graphic_len',
                'sw_phonetic_len', 'G_sw_phonetic_len',
