@@ -189,6 +189,8 @@ class Overview(StaticView):
     _FIELDS = (
         'respondent_id',
         'image_id',
+        'nu_original',
+        'nu_modified',
         'nu_graphic',
         'age',
         'sex',
@@ -319,7 +321,7 @@ class Overview(StaticView):
         ', '.join(_FIELDS)
     )
 
-    _PRIMARY = 3
+    _PRIMARY = 5
 
 
 class EditableTableLike(TableLike):
