@@ -57,7 +57,7 @@ def respondent_info():
 with Connection() as conn:
     data = respondent_info()
     conn.cursor().executemany(
-        'INSERT INTO respondent (respondent_id, first_language_original, second_language, other_language, age, '
+        'INSERT IGNORE INTO respondent (respondent_id, first_language_original, second_language, other_language, age, '
         'sex_original, employment, education, birth_place, year_of_birth, responding_date, survey_language) '
         'VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)', data)
     conn.commit()

@@ -15,7 +15,7 @@ def response_info():
             for l in reader:
                 respondent_id = l[0].strip()
                 for image_id, naming_unit in enumerate(l[10:45], 1):
-                    data.append([respondent_id, image_id, naming_unit.strip()])
+                    data.append([respondent_id, image_id, naming_unit.replace(b"\xF0\x9F\x98\x89".decode('utf-8'), '').strip()])
     return data
 
 
@@ -24,8 +24,10 @@ with Connection() as conn:
     conn.cursor().execute("DELETE FROM response_original")
 
     data = response_info()
-    conn.cursor().executemany(
+    cursor = conn.cursor()
+    cursor.executemany(
         'INSERT INTO response_original (respondent_id, image_id, nu_original) VALUES (%s,%s,%s)',
         data
     )
+    # print(cursor._last_executed.decode('utf-8'))
     conn.commit()
