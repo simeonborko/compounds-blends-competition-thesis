@@ -1,5 +1,6 @@
 from collections import defaultdict, OrderedDict
 from model import SplinterView, NamingUnitTable, ImageTable, SourceWordTable, SplinterTable, Overview, Table
+import configuration
 
 
 class SyncManager:
@@ -46,19 +47,22 @@ class SyncManager:
             for obj in objs:
                 if not obj.sheet_created:
                     continue
-                elif obj.sync(unhighlight):
-                    self.__modified.append(obj.__class__)
-                    potential = list(self.__RULES[obj.__class__])
-
-                    # ak je `obj` instanciou Table, chceme zosynchronizovat Overview
-                    if isinstance(obj, Table) and Overview not in potential:
-                        potential.append(Overview)
-
-                    # pridat do dalsieho kola triedy, na ktore ma vplyv `obj`
-                    # a este sme sa ich nepokusali synchronizovat
-                    affected.extend(cls for cls in potential if cls not in self.__touched)
                 else:
-                    self.__stayed.append(obj.__class__)
+                    modified = obj.sync(unhighlight)
+                    print('Modified:', 'YES' if modified else 'NO')
+                    if modified:
+                        self.__modified.append(obj.__class__)
+                        potential = list(self.__RULES[obj.__class__])
+
+                        # ak je `obj` instanciou Table, chceme zosynchronizovat Overview
+                        if configuration.SYNC_OVERVIEW and isinstance(obj, Table) and Overview not in potential:
+                            potential.append(Overview)
+
+                        # pridat do dalsieho kola triedy, na ktore ma vplyv `obj`
+                        # a este sme sa ich nepokusali synchronizovat
+                        affected.extend(cls for cls in potential if cls not in self.__touched)
+                    else:
+                        self.__stayed.append(obj.__class__)
             self.__sync([cls(*self.__args, as_affected=True) for cls in affected], False)
 
     def generate(self, unhighlight, **kwargs):
@@ -73,6 +77,7 @@ class SyncManager:
         result = OrderedDict()
         for obj in self.__objs:
             obj.sync(unhighlight)
+            obj.integrity_before()
             result[obj.name()] = (obj.integrity_add(), obj.integrity_junk())
         self.sync(False)
         return result

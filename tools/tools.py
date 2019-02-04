@@ -3,17 +3,24 @@ from collections import OrderedDict
 import pymysql
 import csv
 import configuration as c
+from pymysql.constants import FIELD_TYPE
 
 
 class Connection:
 
     def __enter__(self):
+
+        conv = dict(pymysql.converters.conversions)
+        conv[FIELD_TYPE.DECIMAL] = float
+        conv[FIELD_TYPE.NEWDECIMAL] = float
+
         self.conn = pymysql.connect(
             host=c.HOST,
             port=c.PORT,
             user=c.USER,
             password=c.PASSWD,
-            database=c.DB
+            database=c.DB,
+            conv=conv,
         )
         return self.conn
 

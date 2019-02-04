@@ -13,6 +13,7 @@ import configuration
 from entity import SourceWord, NamingUnit, Splinter
 from tools import sk, en
 from tools.exception import ResponseDuplicatesException, ResponseTypeError
+import temp_table
 
 
 class TableLike(ABC):
@@ -30,7 +31,7 @@ class TableLike(ABC):
 
     def __init__(self, wb: Workbook, conn, as_affected: bool = False):
         self._wb = wb
-        self.__conn = conn
+        self.__conn = self._conn = conn
         self._as_affected = as_affected
 
     def _add_header(self, sheet):
@@ -58,8 +59,11 @@ class TableLike(ABC):
     def _update_in_sheet(cls, db_values: list, sheet_cells: List[Cell], indices: Iterable[int]) -> bool:
         modified = False
         for i in indices:
-            if db_values[i] != sheet_cells[i].value and (db_values[i] or sheet_cells[i].value):
-                sheet_cells[i].value = db_values[i]
+            db_val = db_values[i]
+            sh_val = sheet_cells[i].value
+            if db_val != sh_val and (db_val or sh_val):
+                # print(sh_val, type(sh_val), db_val, type(db_val), sep='\t')
+                sheet_cells[i].value = db_val
                 sheet_cells[i].fill = cls._YELLOWFILL
                 modified = True
         return modified
@@ -317,11 +321,30 @@ class Overview(StaticView):
         'pm_sw3_splinter_len_to_nu_len',
         'pm_sw4_splinter_len_to_nu_len',
     )
-    _EXPORT_SELECT = 'SELECT {} FROM overview'.format(
-        ', '.join(_FIELDS)
-    )
+
+    _EXPORT_SELECT = """SELECT {} FROM (
+  SELECT
+    RTS.respondent_id as respondent_id,
+    RTS.age           as age,
+    RTS.sex           as sex,
+    RTS.nu_original,
+    RTS.nu_modified,
+    N.*
+  FROM
+    nu_full N
+    LEFT JOIN respondent_response RTS
+      ON N.nu_graphic = RTS.nu_graphic
+      AND N.image_id = RTS.image_id
+      AND N.first_language = RTS.first_language
+      AND N.survey_language = RTS.survey_language
+) T""".format(', '.join(_FIELDS))
 
     _PRIMARY = 5
+
+    def __init__(self, wb: Workbook, conn, as_affected: bool = False):
+        super().__init__(wb, conn, as_affected)
+        temp_table.create_response_combined(conn)
+        temp_table.create_respondent_response(conn)
 
 
 class EditableTableLike(TableLike):
@@ -469,6 +492,9 @@ class Table(EditableTableLike, metaclass=ABCMeta):
         else:
             return 0
 
+    def integrity_before(self):
+        pass
+
     def integrity_add(self) -> int:
         return self._execute(
             "INSERT IGNORE INTO {} ({}) {}".format(
@@ -561,30 +587,14 @@ class NamingUnitTable(Table):
   or survey_language='SK' and G_nu_syllabic_len is null
   or survey_language='EN' and nu_phonetic is not null and G_nu_syllabic_len is null""".format(_NAME)
 
-    _INTEGRITY_SELECT = "SELECT DISTINCT {} FROM ({}) TBL NATURAL JOIN respondent".format(
-        ', '.join(_FIELDS[:_PRIMARY]),
-        [
-            """SELECT respondent_id, image_id, nu_original nu_graphic
-  FROM (
-    SELECT O.respondent_id, O.image_id, nu_original, nu_modified
-    FROM response_original O
-    LEFT JOIN response_modified M
-      ON O.respondent_id=M.respondent_id AND O.image_id=M.image_id
-  ) A
-  WHERE nu_modified IS NULL
-  UNION
-  SELECT respondent_id, image_id, nu_modified nu_graphic FROM response_modified""",
-            """SELECT respondent_id, image_id, nu_original nu_graphic FROM response_original O
-  WHERE (
-    SELECT COUNT(*) FROM response_modified TMP WHERE O.respondent_id=TMP.respondent_id AND O.image_id=TMP.image_id
-  ) = 0
-  UNION
-  SELECT respondent_id, image_id, nu_modified nu_graphic FROM response_modified"""
-        ][0]  # TODO vyskusat, ktory z tychto dvoch je rychlejsi
-    )
+    _INTEGRITY_SELECT = "SELECT DISTINCT {} FROM respondent_response".format(', '.join(_FIELDS[:_PRIMARY]))
 
     def generate(self, force, **kwargs) -> int:
         return self._generate(force, NamingUnit)
+
+    def integrity_before(self):
+        temp_table.create_response_combined(self._conn)
+        temp_table.create_respondent_response(self._conn)
 
 
 class RespondentTable(Table):
