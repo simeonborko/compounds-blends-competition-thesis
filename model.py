@@ -196,6 +196,7 @@ class Overview(StaticView):
         'nu_original',
         'nu_modified',
         'nu_graphic',
+        'wf_process',
         'age',
         'sex',
         'first_language',
