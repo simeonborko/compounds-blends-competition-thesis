@@ -2,7 +2,7 @@ from abc import ABC, ABCMeta, abstractmethod
 import sys
 from collections import namedtuple
 from itertools import groupby
-from typing import Iterable, Tuple, List, Set
+from typing import Iterable, Tuple, List, Set, Dict, Any
 
 from openpyxl import Workbook
 from openpyxl.cell import Cell
@@ -11,6 +11,7 @@ from openpyxl.worksheet import Worksheet
 from pymysql.cursors import DictCursor
 import configuration
 from entity import SourceWord, NamingUnit, Splinter
+from splinter_view_field_manager import SplinterViewFieldManager
 from tools import sk, en
 from tools.exception import ResponseDuplicatesException, ResponseTypeError
 import temp_table
@@ -57,6 +58,13 @@ class TableLike(ABC):
 
     @classmethod
     def _update_in_sheet(cls, db_values: list, sheet_cells: List[Cell], indices: Iterable[int]) -> bool:
+        """
+        Aktualizuje hodnoty v harku a zafarbi ich na zlto.
+        :param db_values: hodnoty v DB
+        :param sheet_cells: bunky v harku
+        :param indices: indexy stlpcov, pri ktorych ma prioritu DB
+        :return: aktualizovalo sa nieco v harku?
+        """
         modified = False
         for i in indices:
             db_val = db_values[i]
@@ -69,13 +77,23 @@ class TableLike(ABC):
         return modified
 
     @staticmethod
-    def _update_in_db(db_values: list, sheet_cells: List[Cell], indices: Iterable[int]) -> bool:
-        modified = False
+    def _update_in_db(db_values: list, sheet_cells: List[Cell], indices: Iterable[int]) -> List[int]:
+        """
+        Zisti, ci je potrebne aktualizovat databazu.
+        Vedlajsi efekt, ze meni hodnoty v db_values.
+        :param db_values: hodnoty v databaze
+        :param sheet_cells: bunky v harku
+        :param indices: indexy, ktore hodnoty sa maju prenasat do DB (editable)
+        :return: zoznam indexov stlpcov, kde treba aktualizovat hodnotu v DB
+        """
+        print('Entering _update_in_db')
+        mod_idx = []
         for i in indices:
             if db_values[i] != sheet_cells[i].value and (db_values[i] or sheet_cells[i].value):
                 db_values[i] = sheet_cells[i].value
-                modified = True
-        return modified
+                mod_idx.append(i)
+        print('Leaving _update_in_db')
+        return mod_idx
 
     @abstractmethod
     def _sync(self, vals_gen) -> bool:
@@ -105,6 +123,11 @@ class TableLike(ABC):
         return True
 
     def sync(self, unhighlight: bool = False) -> bool:
+        """
+        Synchronizuje TableLike objekt medzi DB a Workbookom.
+        :param unhighlight: ma sa zrusit zlte zvyraznenie vo Workbooku?
+        :return: bol Workbook zmeneny?
+        """
 
         # ziskat zaznamy z DB
         db_dict = {dbvals[:self._PRIMARY]: list(dbvals) for dbvals in self._execute(self._EXPORT_SELECT).cursor}
@@ -159,7 +182,7 @@ class TableLike(ABC):
         return self._sync((db_dict[k], sheet_dict[k]) for k in keys_both) or modified
 
     @property
-    def primary_fields(self) -> tuple: return self._FIELDS[:self._PRIMARY]
+    def primary_fields(self) -> Tuple[str, ...]: return self._FIELDS[:self._PRIMARY]
 
     @classmethod
     def name(cls) -> str: return cls._NAME
@@ -369,7 +392,7 @@ class EditableTableLike(TableLike):
         else:
             return self.__looks_like_generated(field)
 
-    def __split_fields(self) -> (Tuple[int], Tuple[int]):
+    def __split_fields(self) -> (Tuple[int, ...], Tuple[int, ...]):
         editable = []
         generated = []
         for i, field in enumerate(self._FIELDS[self._PRIMARY:], self._PRIMARY):
@@ -381,8 +404,16 @@ class EditableTableLike(TableLike):
         return set(super()._emphasized_columns) | set(self.__generated)
 
     def _sync(self, vals_gen):
+        """
+        :param vals_gen: generator (zoznam hodnot v DB riadku, zoznam buniek vo Workbook riadku)
+        :return:
+        """
+
+        print('Entering _sync', self._as_affected)
+
         modified = False
 
+        # ako v dosledku, ze nieco ine bolo zmenene, takze vsetko treba zmenit v harku
         if self._as_affected:
             indices = range(len(self._FIELDS))
             for db_values, sheet_cells in vals_gen:
@@ -391,18 +422,27 @@ class EditableTableLike(TableLike):
 
         else:
             for db_values, sheet_cells in vals_gen:
-                if self._update_in_db(db_values, sheet_cells, self.__editable):
-                    self._update(db_values)
+                indexes_to_update = self._update_in_db(db_values, sheet_cells, self.__editable)
+                print(indexes_to_update)
+                if len(indexes_to_update) > 0:
+                    all_data = dict(zip(self.fields, db_values))
+                    fields_to_update = [self.fields[idx] for idx in indexes_to_update]
+                    self._update(all_data, fields_to_update)
                     modified = True
                 if self._update_in_sheet(db_values, sheet_cells, self.__generated):
                     modified = True
 
+        print('Leaving _sync')
+
         return modified
 
     @abstractmethod
-    def _update(self, datarow):
-        """Aktualizuje data v DB podla `datarow`.
-        Neoveruje, ci sa nezmenili hodnoty v needitovatelnych stlpcoch; to musi zariadit volajuci."""
+    def _update(self, data: Dict[str, Any], fields_to_modify: List[str]):
+        """
+        Aktualizuje data v DB podla `data`.
+        :param data: nazov stlpca -> hodnota. Su tu vsetky stlpce.
+        :param fields_to_modify: zoznam stlpcov, ktore sa maju zmenit v DB
+        """
         pass
 
     @property
@@ -448,15 +488,20 @@ class Table(EditableTableLike, metaclass=ABCMeta):
         fset = set(fields)
         return tuple(idx for idx, field in enumerate(self._FIELDS) if field in fset)
 
-    def _update(self, datarow):
-        if len(datarow) != len(self.__field_mask):
-            raise Exception
+    def _update(self, data: Dict[str, Any], fields_to_modify: List[str]):
+        """`data` obsahuju hodnoty, ktore su primarnym klucom a tie, ktore chceme zmenit.
+        Tie, ktore sa nemenia, tam nemaju byt."""
+
+        to_set = ["{0} = %({0})s".format(f) for f in fields_to_modify if f in self.editable_fields]
+        if len(to_set) == 0:
+            print('Warning: No data to set', data)
+            return
+
         query = "UPDATE {} SET {} WHERE {}".format(
             self._NAME,
-            ', '.join(self._FIELDS[i] + " = %s" for i in self.__field_mask[self._PRIMARY:]),
-            ' AND '.join(f + " = %s" for f in self.primary_fields)
+            ', '.join(to_set),
+            ' AND '.join("{0} = %({0})s".format(f) for f in self.primary_fields),
         )
-        data = datarow[self._PRIMARY:] + datarow[:self._PRIMARY]
         self._execute(query, data)
 
     def _generate(self, force: bool, cls) -> int:
@@ -735,6 +780,7 @@ class SplinterView(EditableTableLike):
 
     _NAME = 'splinter_view'
 
+    # nu_graphic, first_language, survey_language, image_id
     _PRIMARY = 4
 
     _EXCLUDE_EDITABLE = {
@@ -744,42 +790,36 @@ class SplinterView(EditableTableLike):
         'pm_name',
     }
 
-    __NU_FIELDS_ALL = __NU_FIELDS = (
+    # ktore stlpce z naming unit tabulky chceme
+    __NU_FIELDS = (
         'nu_graphic', 'first_language', 'survey_language', 'image_id',
         'wf_process',
-
-        # 'sw1_graphic', 'sw2_graphic', 'sw3_graphic', 'sw4_graphic',
-        # 'sw1_headmod', 'sw2_headmod', 'sw3_headmod', 'sw4_headmod',
-        # 'sw1_subdom', 'sw2_subdom', 'sw3_subdom', 'sw4_subdom',
-
         'nu_word_class', 'nu_phonetic',
-        'nu_syllabic', 'G_nu_syllabic', 'G_nu_syllabic__ignore',
-        'nu_graphic_len', 'G_nu_graphic_len',
-        'nu_phonetic_len', 'G_nu_phonetic_len',
-        'nu_syllabic_len', 'G_nu_syllabic_len',
-        'n_of_overlapping_letters', 'G_n_of_overlapping_letters',
-        'n_of_overlapping_phones', 'G_n_of_overlapping_phones',
-        'lexsh_main', 'G_lexsh_main', 'G_lexsh_main__ignore', 'lexsh_sm', 'G_lexsh_sm', 'G_lexsh_sm__ignore',
-        'lexsh_whatm', 'G_lexsh_whatm', 'G_lexsh_whatm__ignore',
-        'split_point_1', 'G_split_point_1', 'split_point_2', 'G_split_point_2', 'split_point_3', 'G_split_point_3'
+        'nu_syllabic',
+        'nu_graphic_len',
+        'nu_phonetic_len',
+        'nu_syllabic_len',
+        'n_of_overlapping_letters',
+        'n_of_overlapping_phones',
+        'lexsh_main', 'lexsh_sm', 'lexsh_whatm',
+        'split_point_1', 'split_point_2', 'split_point_3',
     )
 
+    # ktore stlpce z image tabulky chceme
     __IMG_FIELDS = (
         'sub_sem_cat', 'dom_sem_cat', 'sub_name', 'dom_name',
         'sub_number', 'dom_number', 'half_number', 'sub_sub'
     )
 
+    # ktore stlpce zo source_word maju byt pri kazdom zdrojovom slove
     __SW_FIELDS = (
-        'sw_graphic',
-        'source_language', 'sw_phonetic', 'sw_word_class',
-        'sw_syllabic', 'G_sw_syllabic', 'G_sw_syllabic__ignore',
-        'sw_graphic_len', 'G_sw_graphic_len',
-        'sw_phonetic_len', 'G_sw_phonetic_len',
-        'sw_syllabic_len', 'G_sw_syllabic_len', 'frequency_in_snc'
+        'sw_graphic', 'source_language',
+        'sw_phonetic', 'sw_word_class', 'sw_syllabic',
+        'sw_graphic_len', 'sw_phonetic_len', 'sw_syllabic_len',
     )
 
-    __SPL_FIELDS_ALL = (
-        'nu_graphic', 'first_language', 'survey_language', 'image_id',
+    # ktore stlpce zo splinter chceme pre kazdy splinter
+    __SPL_FIELDS = (
         'type_of_splinter',
         'sw1_splinter', 'sw2_splinter', 'sw3_splinter', 'sw4_splinter',
         'sw1_splinter_len', 'sw2_splinter_len', 'sw3_splinter_len', 'sw4_splinter_len',
@@ -788,76 +828,28 @@ class SplinterView(EditableTableLike):
         'G_sw1_splinter_len', 'G_sw1_splinter_len__ignore', 'G_sw2_splinter_len', 'G_sw2_splinter_len__ignore',
         'G_sw3_splinter_len', 'G_sw3_splinter_len__ignore', 'G_sw4_splinter_len', 'G_sw4_splinter_len__ignore'
     )
-    __SPL_FIELDS_EXTRA = {'nu_graphic', 'first_language', 'survey_language', 'image_id'}
 
+    # typy splintrov
     __SPL_TYPES = ('gs', 'gm', 'ps', 'pm')
 
     def __init__(self, wb, conn, as_affected: bool = False):
 
-        self.__SPL_FIELDS = tuple(f for f in self.__SPL_FIELDS_ALL if f not in self.__SPL_FIELDS_EXTRA)
+        self.__field_manager = SplinterViewFieldManager(
+            self.__NU_FIELDS, self.__IMG_FIELDS, self.__SW_FIELDS, self.__SPL_FIELDS, self.__SPL_TYPES
+        )
 
-        self._FIELDS, static_fields, select_fields = self.__create_fields()
-        self._EXCLUDE_EDITABLE.update(static_fields)
-        self._EXPORT_SELECT = self.__create_export_select(select_fields)
+        self._FIELDS = self.__field_manager.flat_fields
+
+        self._EXCLUDE_EDITABLE.update(self.__field_manager.static_fields)
+
+        self._EXPORT_SELECT = self.__export_select
 
         super().__init__(wb, conn, as_affected)  # vyzaduje _FIELDS
 
-        self.__nu_table = NamingUnitTable(wb, conn, as_affected, self.__NU_FIELDS_ALL)
-        self.__spl_table = SplinterTable(wb, conn, as_affected, self.__SPL_FIELDS_ALL)
+        self.__spl_table = SplinterTable(wb, conn, as_affected)
 
-        self.__indices = self.__create_indices()  # splinter indices
-
-    def __create_fields(self):
-
-        def sw_fn(f: str) -> str:
-            gflag = f.startswith('G_')
-            if gflag:
-                f = f[2:]
-            if f.startswith('sw_'):
-                f = f[3:]
-            return 'G_sw{}_' + f if gflag else 'sw{}_' + f
-
-        def spl_fn(f: str) -> str:
-            if f == 'type_of_splinter':
-                return '{}_name'
-            gflag = f.startswith('G_')
-            if gflag:
-                f = f[2:]
-            return 'G_{}_' + f if gflag else '{}_' + f
-
-        fields = []
-        static = []  # img, sw
-        select = []
-
-        fields.extend(self.__NU_FIELDS)
-        select.extend('NU.' + f for f in self.__NU_FIELDS)
-
-        fields.extend(self.__IMG_FIELDS)
-        static.extend(self.__IMG_FIELDS)
-        select.extend('I.' + f for f in self.__IMG_FIELDS)
-
-        sw_fmt = [sw_fn(f) for f in self.__SW_FIELDS]
-
-        for i in range(4):
-            for field, fmt in zip(self.__SW_FIELDS, sw_fmt):
-                newname = fmt.format(i+1)
-                fields.append(newname)
-                static.append(newname)
-                select.append('SW{}.{} {}'.format(i+1, field, newname))
-
-        spl_fmt = [spl_fn(f) for f in self.__SPL_FIELDS]
-
-        for name in self.__SPL_TYPES:
-            upcase = name.upper()
-            for field, fmt in zip(self.__SPL_FIELDS, spl_fmt):
-                newname = fmt.format(name)
-                fields.append(newname)
-                select.append('{}.{} {}'.format(upcase, field, newname))
-
-        return tuple(fields), tuple(static), tuple(select)
-
-    @staticmethod
-    def __create_export_select(select_fields):
+    @property
+    def __export_select(self):
         return """SELECT {} FROM naming_unit NU
 
   LEFT JOIN image I
@@ -908,26 +900,33 @@ class SplinterView(EditableTableLike):
       AND NU.image_id = PM.image_id
       AND PM.type_of_splinter = 'phonetic modified';
 """.format(
-            ', '.join(select_fields)
+            ', '.join(self.__field_manager.select_fields)
         )
 
-    def __create_indices(self):
+    def _update(self, data: Dict[str, Any], fields_to_modify: List[str]):
 
-        def spl_range(name):
-            nu = len(self.__NU_FIELDS)
-            img = len(self.__IMG_FIELDS)
-            sw = len(self.__SW_FIELDS)
-            spl = len(self.__SPL_FIELDS)
-            start = nu + img + 4 * sw + self.__SPL_TYPES.index(name) * spl
-            return range(start, start + spl)
+        # nu_graphic, first_language, survey_language, image_id
+        base_dict = {f: value for f, value in data.items() if f in self.primary_fields}
 
-        extending = [self._FIELDS.index(ef) for ef in self.__SPL_FIELDS_EXTRA]
-        return {name: sorted(list(spl_range(name)) + extending) for name in self.__SPL_TYPES}
+        for spl_type in self.__SPL_TYPES:
 
-    def _update(self, datarow):
-        self.__nu_table._update([datarow[i] for i in range(len(self.__NU_FIELDS))])
-        for name in self.__SPL_TYPES:
-            self.__spl_table._update([datarow[i] for i in self.__indices[name]])
+            to_modify = [
+                orig_field
+                for orig_field, curr_field in self.__field_manager.original_spl_to_current[spl_type].items()
+                if curr_field in fields_to_modify
+            ]
+
+            if len(to_modify) > 0:
+
+                data_dict = dict(base_dict)
+
+                # add type_of_splinter, sw1_splinter, ...
+                data_dict.update({
+                    orig_field: data[curr_field]
+                    for orig_field, curr_field in self.__field_manager.original_spl_to_current[spl_type].items()
+                })
+
+                self.__spl_table._update(data_dict, to_modify)
 
     @property
     def integrity_kept(self) -> bool:
@@ -984,7 +983,7 @@ LEFT JOIN response_modified M ON O.respondent_id=M.respondent_id AND O.image_id=
     def _emphasized_columns(self) -> Iterable[int]:
         return range(3)  # nu_modified je technicky primarny, ale moze sa upravovat
 
-    def _update(self, datarow):
+    def _update(self, data: Dict[str, Any], fields_to_modify: List[str]):
         raise NotImplementedError
 
     @staticmethod

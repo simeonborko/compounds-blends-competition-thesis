@@ -35,10 +35,11 @@ SPL_FIELDS = (
         'G_sw3_splinter_len', 'G_sw3_splinter_len__ignore', 'G_sw4_splinter_len', 'G_sw4_splinter_len__ignore'
     )
 
+SPL_TYPES = ('gs', 'gm', 'ps', 'pm')
 
 if __name__ == '__main__':
 
-    obj = SplinterViewFields(NU_FIELDS, IMG_FIELDS, SW_FIELDS, SPL_FIELDS)
+    obj = SplinterViewFieldManager(NU_FIELDS, IMG_FIELDS, SW_FIELDS, SPL_FIELDS, SPL_TYPES)
 
     print('Select fields:')
     for f in obj.select_fields:
@@ -55,9 +56,9 @@ if __name__ == '__main__':
         print(f)
     print()
 
-    print('G_gm_sw3_splinter__ignore', '<->', obj.current_to_original('G_gm_sw3_splinter__ignore'))
-    print('ps_name', '<->', obj.current_to_original('ps_name'))
-    print('sw4_phonetic_len', '<->', obj.current_to_original('sw4_phonetic_len'))
+    print('G_gm_sw3_splinter__ignore', '<->', obj.current_to_original['G_gm_sw3_splinter__ignore'])
+    print('ps_name', '<->', obj.current_to_original['ps_name'])
+    print('sw4_phonetic_len', '<->', obj.current_to_original['sw4_phonetic_len'])
 
 
 
