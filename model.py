@@ -465,28 +465,11 @@ class Table(EditableTableLike, metaclass=ABCMeta):
     # select na riadky, ake primarne kluce maju byt v danej tabulke
     _INTEGRITY_SELECT = None
 
-    def __init__(self, wb: Workbook, conn, as_affected: bool = False, fields=None):
+    def __init__(self, wb: Workbook, conn, as_affected: bool = False):
         super().__init__(wb, conn, as_affected)
         self._EXPORT_SELECT = "SELECT {} FROM {}".format(','.join(self._FIELDS), self._NAME)
         if self._GENERATE_SELECT_ALL is None:  # SplinterTable ma _GENERATE_SELECT_ALL v triede, nie v inite
             self._GENERATE_SELECT_ALL = "SELECT * FROM {}".format(self._NAME)  # treba *, nestaci self._FIELDS
-        self.__field_mask = self.__create_field_mask(fields)
-
-    def __create_field_mask(self, fields) -> tuple:
-        """
-        Maska poli je n-tica indexov do _FIELDS.
-        Primarne polia zostanu vzdy zachovane.
-        :param fields nazvy poli, ktore sa maju zachovat; alebo None
-        :return maska poli
-        """
-        if fields is None:
-            return tuple(range(len(self._FIELDS)))
-
-        if tuple(fields[:self._PRIMARY]) != self.primary_fields:
-            raise Exception
-
-        fset = set(fields)
-        return tuple(idx for idx, field in enumerate(self._FIELDS) if field in fset)
 
     def _update(self, data: Dict[str, Any], fields_to_modify: List[str]):
         """`data` obsahuju hodnoty, ktore su primarnym klucom a tie, ktore chceme zmenit.
@@ -604,12 +587,22 @@ class LanguageTable(Table):
 
 
 class NamingUnitTable(Table):
+
+    __FROM_SW = (
+        'sw1_source_language', 'sw2_source_language', 'sw3_source_language', 'sw4_source_language',
+        'sw1_word_class', 'sw2_word_class', 'sw3_word_class', 'sw4_word_class',
+    )
+
     _NAME = 'naming_unit'
+
+    _EXCLUDE_EDITABLE = __FROM_SW
+
     _FIELDS = (
         'nu_graphic', 'first_language', 'survey_language', 'image_id',
         'wf_process',
 
         'sw1_graphic', 'sw2_graphic', 'sw3_graphic', 'sw4_graphic',
+        *__FROM_SW,
         'sw1_headmod', 'sw2_headmod', 'sw3_headmod', 'sw4_headmod',
         'sw1_subdom', 'sw2_subdom', 'sw3_subdom', 'sw4_subdom',
 
@@ -635,6 +628,42 @@ class NamingUnitTable(Table):
 
     _INTEGRITY_SELECT = "SELECT DISTINCT {} FROM respondent_response".format(', '.join(_FIELDS[:_PRIMARY]))
 
+    def __init__(self, wb: Workbook, conn, as_affected: bool = False):
+        super().__init__(wb, conn, as_affected)
+        self._EXPORT_SELECT = "SELECT {} FROM ({}) T".format(
+            ','.join(self._FIELDS),
+            """SELECT
+    NU.*,
+    `SW1`.`sw_word_class`   AS `sw1_word_class`,
+    `SW2`.`sw_word_class`   AS `sw2_word_class`,
+    `SW3`.`sw_word_class`   AS `sw3_word_class`,
+    `SW4`.`sw_word_class`   AS `sw4_word_class`,
+    `SW1`.`source_language` AS `sw1_source_language`,
+    `SW2`.`source_language` AS `sw2_source_language`,
+    `SW3`.`source_language` AS `sw3_source_language`,
+    `SW4`.`source_language` AS `sw4_source_language`
+
+  FROM naming_unit NU
+
+    left join `source_word` `SW1`
+      on `NU`.`first_language` = `SW1`.`first_language`
+         and `NU`.`survey_language` = `SW1`.`survey_language`
+         and `NU`.`sw1_graphic` = `SW1`.`sw_graphic`
+    left join `source_word` `SW2`
+      on `NU`.`first_language` = `SW2`.`first_language`
+         and `NU`.`survey_language` = `SW2`.`survey_language`
+         and `NU`.`sw2_graphic` = `SW2`.`sw_graphic`
+    left join `source_word` `SW3`
+      on `NU`.`first_language` = `SW3`.`first_language`
+         and `NU`.`survey_language` = `SW3`.`survey_language`
+         and `NU`.`sw3_graphic` = `SW3`.`sw_graphic`
+    left join `source_word` `SW4`
+      on `NU`.`first_language` = `SW4`.`first_language`
+         and `NU`.`survey_language` = `SW4`.`survey_language`
+         and `NU`.`sw4_graphic` = `SW4`.`sw_graphic`"""
+        )
+
+    # noinspection PyUnusedLocal
     def generate(self, force, **kwargs) -> int:
         return self._generate(force, NamingUnit)
 
@@ -772,6 +801,7 @@ WHERE
   )
 """
 
+    # noinspection PyUnusedLocal
     def generate(self, force, **kwargs) -> int:
         return self._generate(force, Splinter)
 
@@ -926,6 +956,7 @@ class SplinterView(EditableTableLike):
                     for orig_field, curr_field in self.__field_manager.original_spl_to_current[spl_type].items()
                 })
 
+                # noinspection PyProtectedMember
                 self.__spl_table._update(data_dict, to_modify)
 
     @property
