@@ -4,6 +4,7 @@ CREATE OR REPLACE VIEW `nu_full` AS
     `NU`.`first_language` AS `first_language`,
     `NU`.`survey_language` AS `survey_language`,
     NU.wf_process as wf_process,
+    NU.wfp_specification as wfp_specification,
     `I`.`image_id` AS `image_id`,
     `I`.`sub_sem_cat` AS `sub_sem_cat`,
     `I`.`dom_sem_cat` AS `dom_sem_cat`,

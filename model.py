@@ -221,6 +221,7 @@ class Overview(StaticView):
         'nu_modified',
         'nu_graphic',
         'wf_process',
+        'wfp_specification',
         'age',
         'sex',
         'first_language',
@@ -604,7 +605,7 @@ class NamingUnitTable(Table):
 
     _FIELDS = (
         'nu_graphic', 'first_language', 'survey_language', 'image_id',
-        'wf_process',
+        'wf_process', 'wfp_specification',
 
         'sw1_graphic', 'sw2_graphic', 'sw3_graphic', 'sw4_graphic',
         *__FROM_SW,
@@ -829,7 +830,7 @@ class SplinterView(EditableTableLike):
     # ktore stlpce z naming unit tabulky chceme
     __NU_FIELDS = (
         'nu_graphic', 'first_language', 'survey_language', 'image_id',
-        'wf_process',
+        'wf_process', 'wfp_specification',
         'nu_word_class', 'nu_phonetic',
         'nu_syllabic',
         'nu_graphic_len',
