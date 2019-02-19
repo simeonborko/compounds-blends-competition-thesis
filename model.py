@@ -48,6 +48,7 @@ class TableLike(ABC):
 
     def _execute(self, *args, **kwargs) -> ExecuteResult:
         c = self.__conn.cursor(**kwargs)
+        print(args)
         res = c.execute(*args) or 0
         return self.ExecuteResult(c, res)
 
@@ -465,11 +466,15 @@ class Table(EditableTableLike, metaclass=ABCMeta):
     # select na riadky, ake primarne kluce maju byt v danej tabulke
     _INTEGRITY_SELECT = None
 
+    # zoznam stlpcov, pouzitych vo funkcii integrity_junk
+    _INTEGRITY_JUNK_FIELDS = None
+
     def __init__(self, wb: Workbook, conn, as_affected: bool = False):
         super().__init__(wb, conn, as_affected)
         self._EXPORT_SELECT = "SELECT {} FROM {}".format(','.join(self._FIELDS), self._NAME)
         if self._GENERATE_SELECT_ALL is None:  # SplinterTable ma _GENERATE_SELECT_ALL v triede, nie v inite
             self._GENERATE_SELECT_ALL = "SELECT * FROM {}".format(self._NAME)  # treba *, nestaci self._FIELDS
+        self._INTEGRITY_JUNK_FIELDS = self._FIELDS
 
     def _update(self, data: Dict[str, Any], fields_to_modify: List[str]):
         """`data` obsahuju hodnoty, ktore su primarnym klucom a tie, ktore chceme zmenit.
@@ -536,7 +541,7 @@ class Table(EditableTableLike, metaclass=ABCMeta):
     def integrity_junk(self) -> int:
         exres = self._execute(
             "SELECT {} FROM {} TBL LEFT JOIN ({}) TMP ON {} WHERE {}".format(
-                ', '.join('TBL.' + field for field in self._FIELDS),
+                ', '.join('TBL.' + field for field in self._INTEGRITY_JUNK_FIELDS),
                 self._NAME,
                 self._INTEGRITY_SELECT,
                 ' AND '.join('TBL.{0} = TMP.{0}'.format(p) for p in self.primary_fields),
@@ -662,6 +667,7 @@ class NamingUnitTable(Table):
          and `NU`.`survey_language` = `SW4`.`survey_language`
          and `NU`.`sw4_graphic` = `SW4`.`sw_graphic`"""
         )
+        self._INTEGRITY_JUNK_FIELDS = tuple(f for f in self._FIELDS if f not in self.__FROM_SW)
 
     # noinspection PyUnusedLocal
     def generate(self, force, **kwargs) -> int:
