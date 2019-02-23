@@ -1,6 +1,7 @@
 from abc import ABC, ABCMeta, abstractmethod
 import sys
 from collections import namedtuple
+from contextlib import contextmanager, ExitStack
 from itertools import groupby
 from typing import Iterable, Tuple, List, Set, Dict, Any
 
@@ -718,26 +719,47 @@ class SourceWordTable(Table):
     # UNION SELECT sw3_graphic, first_language, survey_language from naming_unit WHERE sw3_graphic is not null
     # UNION SELECT sw4_graphic, first_language, survey_language from naming_unit WHERE sw4_graphic is not null
 
-    def generate(self, force, **kwargs) -> int:
-        if kwargs['corpus'] and kwargs['cambridge']:
-            with sk.Corpus(configuration.CORPUS_FILE) as corpus:
-                with en.TranscriptionManager() as trans_man:
-                    SourceWord.TRANSCRIPTION_MANAGER = trans_man
-                    SourceWord.CORPUS = corpus
-                    affected = self._generate(force, SourceWord)
-                    SourceWord.CORPUS = None
-                    SourceWord.TRANSCRIPTION_MANAGER = None
-        elif kwargs['corpus']:
-            with sk.Corpus(configuration.CORPUS_FILE) as corpus:
-                SourceWord.CORPUS = corpus
-                affected = self._generate(force, SourceWord)
+    @staticmethod
+    @contextmanager
+    def _sk_corpus_context_manager():
+        with sk.Corpus(configuration.CORPUS_FILE) as corpus:
+            SourceWord.CORPUS = corpus
+            try:
+                yield
+            finally:
                 SourceWord.CORPUS = None
-        elif kwargs['cambridge']:
-            with en.TranscriptionManager() as trans_man:
-                SourceWord.TRANSCRIPTION_MANAGER = trans_man
-                affected = self._generate(force, SourceWord)
+
+    @staticmethod
+    @contextmanager
+    def _en_corpus_context_manager():
+        with en.BncCorpus(configuration.BNC_CORPUS_FILE, configuration.BNC_CORPUS_NOT_FOUND_LIST_FILE) as bnc_corpus:
+            SourceWord.BNC_CORPUS = bnc_corpus
+            try:
+                yield
+            finally:
+                SourceWord.BNC_CORPUS = None
+
+    @staticmethod
+    @contextmanager
+    def _en_transcription_context_manager():
+        with en.TranscriptionManager() as trans_man:
+            SourceWord.TRANSCRIPTION_MANAGER = trans_man
+            try:
+                yield
+            finally:
                 SourceWord.TRANSCRIPTION_MANAGER = None
-        else:
+
+    def generate(self, force, **kwargs) -> int:
+
+        with ExitStack() as stack:
+
+            if kwargs['corpus']:
+                stack.enter_context(self._sk_corpus_context_manager())
+            if kwargs['bnc_corpus']:
+                stack.enter_context(self._en_corpus_context_manager())
+            if kwargs['cambridge']:
+                stack.enter_context(self._en_transcription_context_manager())
+
             affected = self._generate(force, SourceWord)
 
         return affected

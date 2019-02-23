@@ -43,6 +43,7 @@ class Entity(ABC):
 class SourceWord(Entity):
 
     CORPUS = None  # corpus ma nastavit volajuci
+    BNC_CORPUS = None  # ma nastavit volajuci
     TRANSCRIPTION_MANAGER = None  # ma nastavit volajuci
     __MATCHER = DbMatcher()
 
@@ -93,6 +94,8 @@ class SourceWord(Entity):
     def __frequency_in_snc(self):
         if self.__lang == 'SK' and self.CORPUS is not None:
             self['frequency_in_snc'] = self.CORPUS.get_frequency(self['sw_graphic'])
+        elif self.__lang == 'EN' and self.BNC_CORPUS is not None:
+            self['frequency_in_snc'] = self.BNC_CORPUS.get_frequency(self['sw_graphic'])
 
     def generate(self):
         self.__sw_phonetic()
