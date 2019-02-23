@@ -6,6 +6,7 @@ from tools import sk, en
 from tools.exception import WordSegmentException
 from tools.splinter import SlovakGraphicSplinter, SlovakPhoneticSplinter, EnglishGraphicSplinter, \
     EnglishPhoneticSplinter
+from tools.splinter.splinter import LexshType
 
 
 class Entity(ABC):
@@ -113,6 +114,8 @@ class NamingUnit(Entity):
     def __init__(self, table, data: dict):
         super().__init__(table, data)
         self.__lang = self['survey_language']
+        if self.__lang not in ('SK', 'EN'):
+            raise Exception
 
     def __nu_syllabic(self):
         if self.__lang == 'SK':
@@ -173,11 +176,34 @@ class NamingUnit(Entity):
     # def __split_point_3(self):
     #     pass
 
+    def __lexsh(self):
+
+        cls = SlovakGraphicSplinter if self.__lang == 'SK' else EnglishGraphicSplinter
+
+        lexsh_arr = []
+
+        for i in range(4):
+            sw_graphic = self['sw{}_graphic'.format(i+1)]
+            gs_splinter = self['gs_sw{}_splinter'.format(i+1)]
+            if sw_graphic and gs_splinter:
+                strict = cls(self['nu_graphic'], sw_graphic, True)
+                strict.set_splinter(gs_splinter)
+                lexsh = strict.lexical_shortening
+                if lexsh == LexshType.FSW:
+                    lexsh_arr.append('FSW')
+                elif lexsh == LexshType.RS:
+                    lexsh_arr.append('RS')
+                elif lexsh == LexshType.LS:
+                    lexsh_arr.append('LS')
+
+        self['G_lexsh_main'] = '+'.join(lexsh_arr)
+
     def generate(self):
         self.__nu_syllabic()
         self.__nu_graphic_len()
         self.__nu_phonetic_len()
         self.__nu_syllabic_len()
+        self.__lexsh()
 
 
 class Splinter(Entity):

@@ -1,9 +1,16 @@
 from abc import ABCMeta, abstractmethod
+from enum import Enum, auto
 from typing import Optional, Sequence, List, Callable
 
 from unidecode import unidecode
 
 from tools import sk, en
+
+
+class LexshType(Enum):
+    FSW = auto()
+    LS = auto()
+    RS = auto()
 
 
 class Alignment:
@@ -37,6 +44,10 @@ class Alignment:
         start = self._nu_range.start
         stop = start + self.score
         return self._nu_orig[start:stop]
+
+    @property
+    def nu_range(self) -> range:
+        return self._nu_range
 
 
 class Splinter:
@@ -91,6 +102,25 @@ class Splinter:
     def length(self) -> Optional[int]:
         # nesmie sa pouzit self.splinter, pretoze self.splinter je menena v detskych triedach
         return len(self.__alignment.splinter) if self.__alignment is not None else None
+
+    @property
+    def lexical_shortening(self) -> Optional[LexshType]:
+
+        if self.__alignment is None:
+            return None
+
+        # if source word starts / ends with splinter
+        starts = self.alignment.nu_range.start == 0
+        ends = self.alignment.nu_range.stop == len(self.__namingunit)
+
+        if starts and ends:
+            return LexshType.FSW
+        elif starts:
+            return LexshType.RS
+        elif ends:
+            return LexshType.LS
+        else:
+            return None
 
 
 class StringSplinter(Splinter, metaclass=ABCMeta):

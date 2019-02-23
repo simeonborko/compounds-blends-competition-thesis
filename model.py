@@ -3,7 +3,7 @@ import sys
 from collections import namedtuple
 from contextlib import contextmanager, ExitStack
 from itertools import groupby
-from typing import Iterable, Tuple, List, Set, Dict, Any
+from typing import Iterable, Tuple, List, Set, Dict, Any, Optional
 
 from openpyxl import Workbook
 from openpyxl.cell import Cell
@@ -88,13 +88,13 @@ class TableLike(ABC):
         :param indices: indexy, ktore hodnoty sa maju prenasat do DB (editable)
         :return: zoznam indexov stlpcov, kde treba aktualizovat hodnotu v DB
         """
-        print('Entering _update_in_db')
+        # print('Entering _update_in_db')
         mod_idx = []
         for i in indices:
             if db_values[i] != sheet_cells[i].value and (db_values[i] or sheet_cells[i].value):
                 db_values[i] = sheet_cells[i].value
                 mod_idx.append(i)
-        print('Leaving _update_in_db')
+        # print('Leaving _update_in_db')
         return mod_idx
 
     @abstractmethod
@@ -379,6 +379,11 @@ class EditableTableLike(TableLike):
     _EXCLUDE_EDITABLE = None
     _INCLUDE_EDITABLE = None
 
+    # tato vlastnost je pridana neskor, ked som zistil,
+    # ze Naming Unit ma polia prepojene zo SourceWord,
+    # a teda tieto polia nie su ani editovatelne, ani generovane
+    _EXCLUDE_GENERATED = None
+
     def __init__(self, wb: Workbook, conn, as_affected: bool=False):
         super().__init__(wb, conn, as_affected)
         self.__editable, self.__generated = self.__split_fields()
@@ -387,8 +392,15 @@ class EditableTableLike(TableLike):
     def __looks_like_generated(field) -> bool:
         return field[:2] == 'G_' and field[-8:] != '__ignore'
 
-    def __is_generated(self, field):
+    def __is_generated(self, field) -> Optional[bool]:
+        """
+        True -> field je generovany
+        False -> field je upravovany vo Workbooku
+        None -> field nie je ani generovany ani upravovany (napr. je z inej tabulky)
+        """
         if self._EXCLUDE_EDITABLE and field in self._EXCLUDE_EDITABLE:
+            if self._EXCLUDE_GENERATED and field in self._EXCLUDE_GENERATED:
+                return None
             return True
         elif self._INCLUDE_EDITABLE and field in self._INCLUDE_EDITABLE:
             return False
@@ -396,10 +408,13 @@ class EditableTableLike(TableLike):
             return self.__looks_like_generated(field)
 
     def __split_fields(self) -> (Tuple[int, ...], Tuple[int, ...]):
+        """vrati editable, generated"""
         editable = []
         generated = []
         for i, field in enumerate(self._FIELDS[self._PRIMARY:], self._PRIMARY):
-            (generated if self.__is_generated(field) else editable).append(i)
+            is_gen = self.__is_generated(field)
+            if is_gen is not None:
+                (generated if is_gen else editable).append(i)
         return tuple(editable), tuple(generated)
 
     @property
@@ -602,7 +617,8 @@ class NamingUnitTable(Table):
 
     _NAME = 'naming_unit'
 
-    _EXCLUDE_EDITABLE = __FROM_SW
+    _EXCLUDE_EDITABLE = set(__FROM_SW)
+    _EXCLUDE_GENERATED = _EXCLUDE_EDITABLE
 
     _FIELDS = (
         'nu_graphic', 'first_language', 'survey_language', 'image_id',
@@ -626,12 +642,41 @@ class NamingUnitTable(Table):
     )
     _PRIMARY = 4
 
-    _GENERATE_SELECT_NEEDED = """select * from {} where
-  survey_language='SK' and G_nu_syllabic is null
-  or G_nu_graphic_len is null
-  or nu_phonetic is not null and G_nu_phonetic_len is null
-  or survey_language='SK' and G_nu_syllabic_len is null
-  or survey_language='EN' and nu_phonetic is not null and G_nu_syllabic_len is null""".format(_NAME)
+    _GENERATE_SELECT_ALL = """SELECT
+    NU.*,
+    IF(GS.sw1_splinter IS NULL OR GS.sw1_splinter = '', GS.G_sw1_splinter, GS.sw1_splinter) AS gs_sw1_splinter,
+    IF(GS.sw2_splinter IS NULL OR GS.sw2_splinter = '', GS.G_sw2_splinter, GS.sw2_splinter) AS gs_sw2_splinter,
+    IF(GS.sw3_splinter IS NULL OR GS.sw3_splinter = '', GS.G_sw3_splinter, GS.sw3_splinter) AS gs_sw3_splinter,
+    IF(GS.sw4_splinter IS NULL OR GS.sw4_splinter = '', GS.G_sw4_splinter, GS.sw4_splinter) AS gs_sw4_splinter,
+    
+    IF(GM.sw1_splinter IS NULL OR GM.sw1_splinter = '', GM.G_sw1_splinter, GM.sw1_splinter) AS gm_sw1_splinter,
+    IF(GM.sw2_splinter IS NULL OR GM.sw2_splinter = '', GM.G_sw2_splinter, GM.sw2_splinter) AS gm_sw2_splinter,
+    IF(GM.sw3_splinter IS NULL OR GM.sw3_splinter = '', GM.G_sw3_splinter, GM.sw3_splinter) AS gm_sw3_splinter,
+    IF(GM.sw4_splinter IS NULL OR GM.sw4_splinter = '', GM.G_sw4_splinter, GM.sw4_splinter) AS gm_sw4_splinter
+    
+    FROM naming_unit NU
+    LEFT JOIN splinter GS ON (
+      NU.nu_graphic = GS.nu_graphic
+      AND NU.first_language = GS.first_language
+      AND NU.survey_language = GS.survey_language
+      AND NU.image_id = GS.image_id
+      AND GS.type_of_splinter = 'graphic strict'
+    )
+    LEFT JOIN splinter GM ON (
+      NU.nu_graphic = GM.nu_graphic
+      AND NU.first_language = GM.first_language
+      AND NU.survey_language = GM.survey_language
+      AND NU.image_id = GM.image_id
+      AND GM.type_of_splinter = 'graphic modified'
+    )
+    """
+
+    #   _GENERATE_SELECT_NEEDED = """select * from {} where
+    # survey_language='SK' and G_nu_syllabic is null
+    # or G_nu_graphic_len is null
+    # or nu_phonetic is not null and G_nu_phonetic_len is null
+    # or survey_language='SK' and G_nu_syllabic_len is null
+    # or survey_language='EN' and nu_phonetic is not null and G_nu_syllabic_len is null""".format(_NAME)
 
     _INTEGRITY_SELECT = "SELECT DISTINCT {} FROM respondent_response".format(', '.join(_FIELDS[:_PRIMARY]))
 
