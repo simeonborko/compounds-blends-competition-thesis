@@ -1,6 +1,6 @@
 from collections import namedtuple
 from itertools import chain
-from typing import List, Tuple, Iterable, Dict
+from typing import List, Tuple, Iterable, Dict, Set
 from cached_property import cached_property
 
 NameT = namedtuple('NameT', ('original', 'current'))
@@ -100,12 +100,12 @@ class SplinterViewFieldManager:
         return fields
 
     @cached_property
-    def static_fields(self) -> List[str]:
+    def static_fields(self) -> Set[str]:
         """Tieto stlpce sa nebudu editovat"""
-        fields = []
-        fields.extend(self.flat_fields_naming_unit)
-        fields.extend(self.flat_fields_image)
-        fields.extend(self.flat_fields_source_word)
+        fields = set()
+        fields.update(self.flat_fields_naming_unit)
+        fields.update(self.flat_fields_image)
+        fields.update(self.flat_fields_source_word)
         return fields
 
     @cached_property

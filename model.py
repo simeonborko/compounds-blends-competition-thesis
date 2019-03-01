@@ -486,6 +486,10 @@ class Table(EditableTableLike, metaclass=ABCMeta):
     # zoznam stlpcov, pouzitych vo funkcii integrity_junk
     _INTEGRITY_JUNK_FIELDS = None
 
+    # mnozina stlpcov, ktore nie su v tabulke, ale mozu byt aktualizovane cez _update
+    # pouziva sa pre lexsh, ktore je editovane cez splinter_view
+    _HIDDEN_BUT_EDITABLE = None
+
     def __init__(self, wb: Workbook, conn, as_affected: bool = False):
         super().__init__(wb, conn, as_affected)
         self._EXPORT_SELECT = "SELECT {} FROM {}".format(','.join(self._FIELDS), self._NAME)
@@ -497,7 +501,10 @@ class Table(EditableTableLike, metaclass=ABCMeta):
         """`data` obsahuju hodnoty, ktore su primarnym klucom a tie, ktore chceme zmenit.
         Tie, ktore sa nemenia, tam nemaju byt."""
 
-        to_set = ["{0} = %({0})s".format(f) for f in fields_to_modify if f in self.editable_fields]
+        to_set = [
+            "{0} = %({0})s".format(f) for f in fields_to_modify
+            if f in self.editable_fields or self._HIDDEN_BUT_EDITABLE and f in self._HIDDEN_BUT_EDITABLE
+        ]
         if len(to_set) == 0:
             print('Warning: No data to set', data)
             return
@@ -636,10 +643,18 @@ class NamingUnitTable(Table):
         'nu_syllabic_len', 'G_nu_syllabic_len',
         'n_of_overlapping_letters', 'G_n_of_overlapping_letters',
         'n_of_overlapping_phones', 'G_n_of_overlapping_phones',
-        'lexsh_main', 'G_lexsh_main', 'G_lexsh_main__ignore', 'lexsh_sm', 'G_lexsh_sm', 'G_lexsh_sm__ignore',
-        'lexsh_whatm', 'G_lexsh_whatm', 'G_lexsh_whatm__ignore',
-        'split_point_1', 'G_split_point_1', 'split_point_2', 'G_split_point_2', 'split_point_3', 'G_split_point_3'
+        # 'lexsh_main', 'G_lexsh_main', 'G_lexsh_main__ignore', 'lexsh_sm', 'G_lexsh_sm', 'G_lexsh_sm__ignore',
+        # 'lexsh_whatm', 'G_lexsh_whatm', 'G_lexsh_whatm__ignore',
+        # 'split_point_1', 'G_split_point_1', 'split_point_2', 'G_split_point_2', 'split_point_3', 'G_split_point_3'
     )
+
+    _HIDDEN_BUT_EDITABLE = {
+        'lexsh_main', 'G_lexsh_main__ignore',
+        'lexsh_sm', 'G_lexsh_sm__ignore',
+        'lexsh_whatm', 'G_lexsh_whatm__ignore',
+        'split_point_1', 'split_point_2', 'split_point_3',
+    }
+
     _PRIMARY = 4
 
     _GENERATE_SELECT_ALL = """SELECT
@@ -894,6 +909,11 @@ class SplinterView(EditableTableLike):
         'pm_name',
     }
 
+    __NU_EDITABLE = {
+        'lexsh_main', 'lexsh_sm', 'lexsh_whatm',
+        'split_point_1', 'split_point_2', 'split_point_3',
+    }
+
     # ktore stlpce z naming unit tabulky chceme
     __NU_FIELDS = (
         'nu_graphic', 'first_language', 'survey_language', 'image_id',
@@ -906,7 +926,9 @@ class SplinterView(EditableTableLike):
         'n_of_overlapping_letters',
         'n_of_overlapping_phones',
         'lexsh_main', 'lexsh_sm', 'lexsh_whatm',
+        'G_lexsh_main', 'G_lexsh_sm', 'G_lexsh_whatm',
         'split_point_1', 'split_point_2', 'split_point_3',
+        'G_split_point_1', 'G_split_point_2', 'G_split_point_3',
     )
 
     # ktore stlpce z image tabulky chceme
@@ -944,12 +966,13 @@ class SplinterView(EditableTableLike):
 
         self._FIELDS = self.__field_manager.flat_fields
 
-        self._EXCLUDE_EDITABLE.update(self.__field_manager.static_fields)
+        self._EXCLUDE_EDITABLE.update(self.__field_manager.static_fields - self.__NU_EDITABLE)
 
         self._EXPORT_SELECT = self.__export_select
 
         super().__init__(wb, conn, as_affected)  # vyzaduje _FIELDS
 
+        self.__nu_table = NamingUnitTable(wb, conn, as_affected)
         self.__spl_table = SplinterTable(wb, conn, as_affected)
 
     @property
@@ -1011,6 +1034,14 @@ class SplinterView(EditableTableLike):
 
         # nu_graphic, first_language, survey_language, image_id
         base_dict = {f: value for f, value in data.items() if f in self.primary_fields}
+
+        nu_fields_to_modify = self.__NU_EDITABLE.intersection(fields_to_modify)
+        if len(nu_fields_to_modify) > 0:
+            data_dict = dict(base_dict)
+            data_dict.update({f: v for f, v in data.items() if f in nu_fields_to_modify})
+
+            # noinspection PyProtectedMember
+            self.__nu_table._update(data_dict, list(nu_fields_to_modify))
 
         for spl_type in self.__SPL_TYPES:
 
