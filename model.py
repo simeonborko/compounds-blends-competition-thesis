@@ -5,6 +5,7 @@ from contextlib import contextmanager, ExitStack
 from itertools import groupby
 from typing import Iterable, Tuple, List, Set, Dict, Any, Optional
 
+from cached_property import cached_property
 from openpyxl import Workbook
 from openpyxl.cell import Cell
 from openpyxl.styles import Font, PatternFill
@@ -35,6 +36,7 @@ class TableLike(ABC):
         self._wb = wb
         self.__conn = self._conn = conn
         self._as_affected = as_affected
+        self._modified = False
 
     def _add_header(self, sheet):
         sheet.append(self._FIELDS)
@@ -49,7 +51,6 @@ class TableLike(ABC):
 
     def _execute(self, *args, **kwargs) -> ExecuteResult:
         c = self.__conn.cursor(**kwargs)
-        print(args)
         res = c.execute(*args) or 0
         return self.ExecuteResult(c, res)
 
@@ -58,8 +59,7 @@ class TableLike(ABC):
         res = c.executemany(*args) or 0
         return self.ExecuteResult(c, res)
 
-    @classmethod
-    def _update_in_sheet(cls, db_values: list, sheet_cells: List[Cell], indices: Iterable[int]) -> bool:
+    def _update_in_sheet(self, db_values: list, sheet_cells: List[Cell], indices: Iterable[int]) -> bool:
         """
         Aktualizuje hodnoty v harku a zafarbi ich na zlto.
         :param db_values: hodnoty v DB
@@ -67,16 +67,15 @@ class TableLike(ABC):
         :param indices: indexy stlpcov, pri ktorych ma prioritu DB
         :return: aktualizovalo sa nieco v harku?
         """
-        modified = False
         for i in indices:
             db_val = db_values[i]
             sh_val = sheet_cells[i].value
             if db_val != sh_val and (db_val or sh_val):
                 # print(sh_val, type(sh_val), db_val, type(db_val), sep='\t')
                 sheet_cells[i].value = db_val
-                sheet_cells[i].fill = cls._YELLOWFILL
-                modified = True
-        return modified
+                sheet_cells[i].fill = self._YELLOWFILL
+                self._modified = True
+        return self._modified
 
     @staticmethod
     def _update_in_db(db_values: list, sheet_cells: List[Cell], indices: Iterable[int]) -> List[int]:
@@ -160,11 +159,9 @@ class TableLike(ABC):
                     if self._same_fill(cell, self._REDFILL):
                         cell.fill = self._NOFILL
 
-        modified = False
-
         # co su iba v DB, pridat zlto
         if len(keys_db_only) > 0:
-            modified = True
+            self._modified = True
             starting_row = sheet.max_row + 1
             for key in keys_db_only:
                 sheet.append(db_dict[key])
@@ -178,10 +175,11 @@ class TableLike(ABC):
                 for cell in sheet_dict[key]:
                     if not self._same_fill(cell, self._REDFILL):
                         cell.fill = self._REDFILL
-                        modified = True
+                        self._modified = True
 
         # co su aj aj, synchronizovat, zafarbit zlto zmenene
-        return self._sync((db_dict[k], sheet_dict[k]) for k in keys_both) or modified
+        self._sync((db_dict[k], sheet_dict[k]) for k in keys_both)
+        return self._modified
 
     @property
     def primary_fields(self) -> Tuple[str, ...]: return self._FIELDS[:self._PRIMARY]
@@ -204,12 +202,11 @@ class StaticView(TableLike):
 
     def _sync(self, vals_gen):
         """Nahradi hodnoty v SHEETE hodnotami z DB"""
-        modified = False
         indices = range(len(self._FIELDS))
         for db_values, sheet_cells in vals_gen:
             if self._update_in_sheet(db_values, sheet_cells, indices):
-                modified = True
-        return modified
+                self._modified = True
+        return self._modified
 
 
 class Overview(StaticView):
@@ -429,30 +426,28 @@ class EditableTableLike(TableLike):
 
         print('Entering _sync', self._as_affected)
 
-        modified = False
-
         # ako v dosledku, ze nieco ine bolo zmenene, takze vsetko treba zmenit v harku
         if self._as_affected:
             indices = range(len(self._FIELDS))
             for db_values, sheet_cells in vals_gen:
                 if self._update_in_sheet(db_values, sheet_cells, indices):
-                    modified = True
+                    self._modified = True
 
         else:
             for db_values, sheet_cells in vals_gen:
                 indexes_to_update = self._update_in_db(db_values, sheet_cells, self.__editable)
-                print(indexes_to_update)
+                # print(indexes_to_update)
                 if len(indexes_to_update) > 0:
                     all_data = dict(zip(self.fields, db_values))
                     fields_to_update = [self.fields[idx] for idx in indexes_to_update]
                     self._update(all_data, fields_to_update)
-                    modified = True
+                    self._modified = True
                 if self._update_in_sheet(db_values, sheet_cells, self.__generated):
-                    modified = True
+                    self._modified = True
 
         print('Leaving _sync')
 
-        return modified
+        return self._modified
 
     @abstractmethod
     def _update(self, data: Dict[str, Any], fields_to_modify: List[str]):
@@ -463,13 +458,13 @@ class EditableTableLike(TableLike):
         """
         pass
 
-    @property
-    def generated_fields(self) -> tuple:
-        return tuple(self._FIELDS[i] for i in self.__generated)
+    @cached_property
+    def generated_fields(self) -> Set[str]:
+        return set(self._FIELDS[i] for i in self.__generated)
 
     @property
-    def editable_fields(self) -> tuple:
-        return tuple(self._FIELDS[i] for i in self.__editable)
+    def editable_fields(self) -> Set[str]:
+        return set(self._FIELDS[i] for i in self.__editable)
 
 
 class Table(EditableTableLike, metaclass=ABCMeta):
@@ -490,6 +485,10 @@ class Table(EditableTableLike, metaclass=ABCMeta):
     # pouziva sa pre lexsh, ktore je editovane cez splinter_view
     _HIDDEN_BUT_EDITABLE = None
 
+    # mnozina stlpcov, ktore nie su v tabulke, ale maju byt generovane
+    # pouziva sa pre lexsh, ktore je generovane pocas naming_unit
+    _HIDDEN_BUT_GENERATED = None
+
     def __init__(self, wb: Workbook, conn, as_affected: bool = False):
         super().__init__(wb, conn, as_affected)
         self._EXPORT_SELECT = "SELECT {} FROM {}".format(','.join(self._FIELDS), self._NAME)
@@ -503,7 +502,7 @@ class Table(EditableTableLike, metaclass=ABCMeta):
 
         to_set = [
             "{0} = %({0})s".format(f) for f in fields_to_modify
-            if f in self.editable_fields or self._HIDDEN_BUT_EDITABLE and f in self._HIDDEN_BUT_EDITABLE
+            if f in self.editable_fields
         ]
         if len(to_set) == 0:
             print('Warning: No data to set', data)
@@ -530,6 +529,8 @@ class Table(EditableTableLike, metaclass=ABCMeta):
             entity.generate()
             if entity.modified:
                 args.append(entity.data)
+
+        print('args', args)
 
         if len(args):
 
@@ -598,6 +599,20 @@ class Table(EditableTableLike, metaclass=ABCMeta):
         )
         return exres.result
 
+    @cached_property
+    def generated_fields(self) -> Set[str]:
+        if self._HIDDEN_BUT_GENERATED:
+            return super().generated_fields.union(self._HIDDEN_BUT_GENERATED)
+        else:
+            return super().generated_fields
+
+    @cached_property
+    def editable_fields(self) -> Set[str]:
+        if self._HIDDEN_BUT_EDITABLE:
+            return super().editable_fields.union(self._HIDDEN_BUT_EDITABLE)
+        else:
+            return super().editable_fields
+
 
 class ImageTable(Table):
     _NAME = 'image'
@@ -653,6 +668,11 @@ class NamingUnitTable(Table):
         'lexsh_sm', 'G_lexsh_sm__ignore',
         'lexsh_whatm', 'G_lexsh_whatm__ignore',
         'split_point_1', 'split_point_2', 'split_point_3',
+    }
+
+    _HIDDEN_BUT_GENERATED = {
+        'G_lexsh_main', 'G_lexsh_sm', 'G_lexsh_whatm',
+        'G_split_point_1', 'G_split_point_2', 'G_split_point_3'
     }
 
     _PRIMARY = 4
@@ -733,7 +753,10 @@ class NamingUnitTable(Table):
 
     # noinspection PyUnusedLocal
     def generate(self, force, **kwargs) -> int:
-        return self._generate(force, NamingUnit)
+        affected = self._generate(force, NamingUnit)
+        if affected > 0:
+            self._modified = True
+        return affected
 
     def integrity_before(self):
         temp_table.create_response_combined(self._conn)
@@ -1144,7 +1167,6 @@ LEFT JOIN response_modified M ON O.respondent_id=M.respondent_id AND O.image_id=
         :raise ResponseTypeError: Ak sa pri zoradzovani riadkov v SHEETE vyskytne TypeError.
         :return: pridali alebo zmazali sa riadky v DB?
         """
-        modified = False
         # (respondent_id, image_id, nu_modified)
         db_set = set(self._execute("SELECT respondent_id, image_id, nu_modified FROM response_modified").cursor)
 
@@ -1176,7 +1198,7 @@ LEFT JOIN response_modified M ON O.respondent_id=M.respondent_id AND O.image_id=
                 list(db_items_only)  # v API je sequence of sequences; set nie je sequence
             )
             if res.result > 0:
-                modified = True
+                self._modified = True
 
         # co nie je v DB -> pridat do DB
         if len(sheet_items_only) > 0:
@@ -1185,9 +1207,9 @@ LEFT JOIN response_modified M ON O.respondent_id=M.respondent_id AND O.image_id=
                 list(sheet_items_only)
             )
             if res.result > 0:
-                modified = True
+                self._modified = True
 
-        return modified
+        return self._modified
 
     def __sync_original(self, sheet: Worksheet) -> (bool, Set[Tuple[str, int]]):
         """
@@ -1195,8 +1217,6 @@ LEFT JOIN response_modified M ON O.respondent_id=M.respondent_id AND O.image_id=
         :param sheet: harok
         :return: udiala sa nejaka zmena?
         """
-
-        modified = False
 
         # (respondent_id, image_id) -> nu_original
         db_dict = {dbvals[:2]: dbvals[2] for dbvals in self._execute(
@@ -1221,7 +1241,7 @@ LEFT JOIN response_modified M ON O.respondent_id=M.respondent_id AND O.image_id=
 
         # co su iba v DB, pridat zlto
         if len(keys_db_only) > 0:
-            modified = True
+            self._modified = True
             starting_row = sheet.max_row + 1
             for key in keys_db_only:
                 sheet.append([*key, db_dict[key], None])
@@ -1236,7 +1256,7 @@ LEFT JOIN response_modified M ON O.respondent_id=M.respondent_id AND O.image_id=
                     for cell in row:
                         if not self._same_fill(cell, self._REDFILL):
                             cell.fill = self._REDFILL
-                            modified = True
+                            self._modified = True
 
         # co su aj aj, skontrolovat ci sa neurobil preklep v nu_original
         if len(keys_both) > 0:
@@ -1247,9 +1267,9 @@ LEFT JOIN response_modified M ON O.respondent_id=M.respondent_id AND O.image_id=
                     if cell.value != nu:
                         cell.value = nu
                         cell.fill = self._YELLOWFILL
-                        modified = True
+                        self._modified = True
 
-        return modified, set(db_dict.keys())
+        return self._modified, set(db_dict.keys())
 
     def sync(self, unhighlight: bool = False) -> bool:
 
@@ -1262,17 +1282,15 @@ LEFT JOIN response_modified M ON O.respondent_id=M.respondent_id AND O.image_id=
                     if self._same_fill(cell, self._YELLOWFILL):
                         cell.fill = self._NOFILL
 
-        modified = False
-
         res, db_keys = self.__sync_original(sheet)
 
         if res:
-            modified = True
+            self._modified = True
 
         if self.__sync_modified(sheet, db_keys):
-            modified = True
+            self._modified = True
 
-        return modified
+        return self._modified
 
     @property
     def integrity_kept(self) -> bool:

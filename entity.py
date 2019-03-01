@@ -29,7 +29,7 @@ class Entity(ABC):
     @property
     def data(self) -> dict:
         """Vrati data, ktore mozu byt generovane alebo patria do primarneho kluca"""
-        fields = self.__table.primary_fields + self.__table.generated_fields
+        fields = self.__table.generated_fields.union(self.__table.primary_fields)
         return {k: v for k, v in self.__data.items() if k in fields}
 
     @property
