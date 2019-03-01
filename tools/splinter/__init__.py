@@ -1,2 +1,2 @@
 from .splinter import Splinter, SlovakGraphicSplinter, SlovakPhoneticSplinter, \
-    EnglishGraphicSplinter, EnglishPhoneticSplinter
+    EnglishGraphicSplinter, EnglishPhoneticSplinter, LexshType

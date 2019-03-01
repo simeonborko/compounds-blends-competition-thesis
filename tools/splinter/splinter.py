@@ -11,6 +11,7 @@ class LexshType(Enum):
     FSW = auto()
     LS = auto()
     RS = auto()
+    RSLS = auto()
 
 
 class Alignment:
@@ -48,6 +49,10 @@ class Alignment:
     @property
     def nu_range(self) -> range:
         return self._nu_range
+
+    @property
+    def sw_range(self) -> range:
+        return self._sw_range
 
 
 class Splinter:
@@ -109,18 +114,14 @@ class Splinter:
         if self.__alignment is None:
             return None
 
-        # if source word starts / ends with splinter
-        starts = self.alignment.nu_range.start == 0
-        ends = self.alignment.nu_range.stop == len(self.__namingunit)
-
-        if starts and ends:
+        if len(self.alignment.sw_range) == len(self.__sourceword):
             return LexshType.FSW
-        elif starts:
+        elif self.alignment.sw_range.start == 0:
             return LexshType.RS
-        elif ends:
+        elif self.alignment.sw_range.stop == len(self.__sourceword):
             return LexshType.LS
         else:
-            return None
+            return LexshType.RSLS
 
 
 class StringSplinter(Splinter, metaclass=ABCMeta):
