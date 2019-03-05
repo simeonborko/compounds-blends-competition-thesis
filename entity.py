@@ -6,7 +6,6 @@ from tools import sk, en
 from tools.exception import WordSegmentException
 from tools.splinter import SlovakGraphicSplinter, SlovakPhoneticSplinter, EnglishGraphicSplinter, \
     EnglishPhoneticSplinter
-from tools.splinter.splinter import LexshType
 
 
 class Entity(ABC):
@@ -158,15 +157,6 @@ class NamingUnit(Entity):
     # def __n_of_overlapping_phones(self):
     #     pass
     #
-    # def __lexsh_main(self):
-    #     pass
-    #
-    # def __lexsh_sm(self):
-    #     pass
-    #
-    # def __lexsh_whatm(self):
-    #     pass
-    #
     # def __split_point_1(self):
     #     pass
     #
@@ -180,23 +170,42 @@ class NamingUnit(Entity):
 
         cls = SlovakGraphicSplinter if self.__lang == 'SK' else EnglishGraphicSplinter
 
-        lexsh_arr = []
+        lexsh_main = []
+        is_lexsh_modified = False
+        lexsh_whatm = []
 
         for i in range(4):
             sw_graphic = self['sw{}_graphic'.format(i+1)]
             gs_splinter = self['gs_sw{}_splinter'.format(i+1)]
-            if sw_graphic and gs_splinter:
-                strict = cls(self['nu_graphic'], sw_graphic, True)
-                strict.set_splinter(gs_splinter)
-                lexsh = strict.lexical_shortening
-                if lexsh == LexshType.FSW:
-                    lexsh_arr.append('FSW')
-                elif lexsh == LexshType.RS:
-                    lexsh_arr.append('RS')
-                elif lexsh == LexshType.LS:
-                    lexsh_arr.append('LS')
+            gm_splinter = self['gm_sw{}_splinter'.format(i+1)]
+            if not sw_graphic or not gs_splinter:
+                break
 
-        self['G_lexsh_main'] = '+'.join(lexsh_arr)
+            strict = cls(self['nu_graphic'], sw_graphic, True)
+            strict.set_splinter(gs_splinter)
+            lexsh = strict.lexical_shortening
+            if lexsh:
+                lexsh_main.append(lexsh.name)
+
+                if gm_splinter:
+
+                    if gs_splinter == gm_splinter:
+                        # splintre su rovnake => ziadna zmena
+                        lexsh_whatm.append(lexsh_main[-1])
+                    else:
+                        modified = cls(self['nu_graphic'], sw_graphic, False)
+                        modified.set_splinter(gm_splinter)
+                        lexsh = modified.lexical_shortening
+                        if lexsh:
+                            is_lexsh_modified = True
+                            lexsh_whatm.append(lexsh.name + 'm')
+
+        self['G_lexsh_main'] = '+'.join(lexsh_main)
+        if len(lexsh_main) and len(lexsh_main) == len(lexsh_whatm):
+            self['G_lexsh_sm'] = 'modified' if is_lexsh_modified else 'strict'
+        else:
+            self['G_lexsh_sm'] = ''
+        self['G_lexsh_whatm'] = '+'.join(lexsh_whatm)
 
     def generate(self):
         self.__nu_syllabic()
