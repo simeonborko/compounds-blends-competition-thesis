@@ -220,6 +220,8 @@ class Overview(StaticView):
         'nu_graphic',
         'wf_process',
         'wfp_specification',
+        'wfp_strict_modification',
+        'connect_element',
         'age',
         'sex',
         'first_language',
@@ -645,6 +647,7 @@ class NamingUnitTable(Table):
     _FIELDS = (
         'nu_graphic', 'first_language', 'survey_language', 'image_id',
         'wf_process', 'wfp_specification',
+        'wfp_strict_modification', 'connect_element',
 
         'sw1_graphic', 'sw2_graphic', 'sw3_graphic', 'sw4_graphic',
         *__FROM_SW,
@@ -941,6 +944,7 @@ class SplinterView(EditableTableLike):
     __NU_FIELDS = (
         'nu_graphic', 'first_language', 'survey_language', 'image_id',
         'wf_process', 'wfp_specification',
+        'wfp_strict_modification', 'connect_element',
         'nu_word_class', 'nu_phonetic',
         'nu_syllabic',
         'nu_graphic_len',
