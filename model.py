@@ -619,8 +619,17 @@ class Table(EditableTableLike, metaclass=ABCMeta):
 class ImageTable(Table):
     _NAME = 'image'
     _FIELDS = (
-        'image_id', 'sub_sem_cat', 'dom_sem_cat', 'sub_name', 'dom_name',
-        'sub_number', 'dom_number', 'half_number', 'sub_sub'
+        'image_id',
+        'im_sub_sem_cat',
+        'im_dom_sem_cat',
+        'im_shape_nonshape',
+        'im_sub_name',
+        'im_dom_name',
+        'im_sub_number',
+        'im_dom_number',
+        'im_half_number',
+        'im_dom_half',
+        'im_dom_half_number',
     )
     _PRIMARY = 1
 
