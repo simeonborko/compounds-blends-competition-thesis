@@ -7,14 +7,7 @@ CREATE OR REPLACE VIEW `nu_full` AS
     NU.wfp_specification as wfp_specification,
     NU.wfp_strict_modification as wfp_strict_modification,
     NU.connect_element as connect_element,
-    `I`.`image_id` AS `image_id`,
-    `I`.`sub_sem_cat` AS `sub_sem_cat`,
-    `I`.`dom_sem_cat` AS `dom_sem_cat`,
-    `I`.`sub_name` AS `sub_name`,
-    `I`.`dom_name` AS `dom_name`,
-    `I`.`sub_number` AS `sub_number`,
-    `I`.`dom_number` AS `dom_number`,
-    `I`.`half_number` AS `half_number`,
+    `NU`.`image_id` AS `image_id`,
     `NU`.`nu_phonetic` AS `nu_phonetic`,
     `NU`.`nu_syllabic` AS `nu_syllabic`,
     `NU`.`nu_graphic_len` AS `nu_graphic_len`,
@@ -136,7 +129,7 @@ CREATE OR REPLACE VIEW `nu_full` AS
                       (
                           (
                               (
-                                  (`naming_unit` `NU` left join `image` `I` on((`NU`.`image_id` = `I`.`image_id`)))
+                                  (`naming_unit` `NU`)
                                   left join `source_word` `SW1` on(((`NU`.`first_language` = `SW1`.`first_language`) and (`NU`.`survey_language` = `SW1`.`survey_language`) and (`NU`.`sw1_graphic` = `SW1`.`sw_graphic`)))
                               )
                               left join `source_word` `SW2` on(((`NU`.`first_language` = `SW2`.`first_language`) and (`NU`.`survey_language` = `SW2`.`survey_language`) and (`NU`.`sw2_graphic` = `SW2`.`sw_graphic`)))

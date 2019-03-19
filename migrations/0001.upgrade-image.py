@@ -5,9 +5,6 @@ from typing import Optional, Tuple
 
 from yoyo import step
 
-__depends__ = {}
-
-
 # zmena nazvu: ALTER TABLE image CHANGE <OLD_NAME> <NEW_NAME> <COLUMN_DEFINITION>
 # pridanie: ALTER TABLE image ADD <NAME> <COLUMN_DEFINITION> [ AFTER <AFTER_COLUMN> ]
 # zrusenie: ALTER TABLE image DROP <NAME>
