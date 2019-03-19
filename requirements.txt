@@ -4,4 +4,4 @@ unidecode
 pymysql
 git+git://github.com/simeonborko/syllabiky.git
 cached-property
-
+yoyo-migrations
