@@ -969,8 +969,16 @@ class SplinterView(EditableTableLike):
 
     # ktore stlpce z image tabulky chceme
     __IMG_FIELDS = (
-        'sub_sem_cat', 'dom_sem_cat', 'sub_name', 'dom_name',
-        'sub_number', 'dom_number', 'half_number', 'sub_sub'
+        'im_sub_sem_cat',
+        'im_dom_sem_cat',
+        'im_shape_nonshape',
+        'im_sub_name',
+        'im_dom_name',
+        'im_sub_number',
+        'im_dom_number',
+        'im_half_number',
+        'im_dom_half',
+        'im_dom_half_number',
     )
 
     # ktore stlpce zo source_word maju byt pri kazdom zdrojovom slove
