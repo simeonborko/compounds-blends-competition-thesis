@@ -411,7 +411,8 @@ class EditableTableLike(TableLike):
 
     @property
     def _emphasized_columns(self) -> Iterable[int]:
-        return set(super()._emphasized_columns) | set(self.__generated)
+        # od rodica + doplnok k editable
+        return set(super()._emphasized_columns) | (set(range(len(self._FIELDS))) - set(self.__editable))
 
     def _sync(self, vals_gen):
         """
@@ -641,13 +642,27 @@ class NamingUnitTable(Table):
         'sw1_word_class', 'sw2_word_class', 'sw3_word_class', 'sw4_word_class',
     )
 
+    __FROM_IMG = (
+        'im_sub_sem_cat',
+        'im_dom_sem_cat',
+        'im_shape_nonshape',
+        'im_sub_name',
+        'im_dom_name',
+        'im_sub_number',
+        'im_dom_number',
+        'im_half_number',
+        'im_dom_half',
+        'im_dom_half_number',
+    )
+
     _NAME = 'naming_unit'
 
-    _EXCLUDE_EDITABLE = set(__FROM_SW)
+    _EXCLUDE_EDITABLE = set(__FROM_SW) | set(__FROM_IMG)
     _EXCLUDE_GENERATED = _EXCLUDE_EDITABLE
 
     _FIELDS = (
         'nu_graphic', 'first_language', 'survey_language', 'image_id',
+        *__FROM_IMG,
         'wf_process', 'wfp_specification',
         'wfp_strict_modification', 'connect_element',
 
@@ -722,20 +737,30 @@ class NamingUnitTable(Table):
 
     def __init__(self, wb: Workbook, conn, as_affected: bool = False):
         super().__init__(wb, conn, as_affected)
+
+        # stlpce, ktore budu v selecte
+        sel_fields = [
+            "NU.*",
+            "`SW1`.`sw_word_class`   AS `sw1_word_class`",
+            "`SW2`.`sw_word_class`   AS `sw2_word_class`",
+            "`SW3`.`sw_word_class`   AS `sw3_word_class`",
+            "`SW4`.`sw_word_class`   AS `sw4_word_class`",
+            "`SW1`.`source_language` AS `sw1_source_language`",
+            "`SW2`.`source_language` AS `sw2_source_language`",
+            "`SW3`.`source_language` AS `sw3_source_language`",
+            "`SW4`.`source_language` AS `sw4_source_language`",
+        ]
+        for imgf in self.__FROM_IMG:
+            sel_fields.append(f"`IMG`.`{imgf}` AS `{imgf}`")
+
         self._EXPORT_SELECT = "SELECT {} FROM ({}) T".format(
             ','.join(self._FIELDS),
-            """SELECT
-    NU.*,
-    `SW1`.`sw_word_class`   AS `sw1_word_class`,
-    `SW2`.`sw_word_class`   AS `sw2_word_class`,
-    `SW3`.`sw_word_class`   AS `sw3_word_class`,
-    `SW4`.`sw_word_class`   AS `sw4_word_class`,
-    `SW1`.`source_language` AS `sw1_source_language`,
-    `SW2`.`source_language` AS `sw2_source_language`,
-    `SW3`.`source_language` AS `sw3_source_language`,
-    `SW4`.`source_language` AS `sw4_source_language`
+            """SELECT {}
 
-  FROM naming_unit NU
+    FROM naming_unit NU
+
+    left join `image` `IMG`
+      on `NU`.`image_id` = `IMG`.`image_id`
 
     left join `source_word` `SW1`
       on `NU`.`first_language` = `SW1`.`first_language`
@@ -752,7 +777,7 @@ class NamingUnitTable(Table):
     left join `source_word` `SW4`
       on `NU`.`first_language` = `SW4`.`first_language`
          and `NU`.`survey_language` = `SW4`.`survey_language`
-         and `NU`.`sw4_graphic` = `SW4`.`sw_graphic`"""
+         and `NU`.`sw4_graphic` = `SW4`.`sw_graphic`""".format(', '.join(sel_fields))
         )
         self._INTEGRITY_JUNK_FIELDS = tuple(f for f in self._FIELDS if f not in self.__FROM_SW)
 
