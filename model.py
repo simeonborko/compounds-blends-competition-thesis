@@ -663,8 +663,8 @@ class NamingUnitTable(Table):
     _FIELDS = (
         'nu_graphic', 'first_language', 'survey_language', 'image_id',
         *__FROM_IMG,
-        'wf_process', 'wfp_specification',
-        'wfp_strict_modification', 'connect_element',
+        'wf_process', 'wfp_specification', 'wfp_strict_modification',
+        'connect_element', 'what_connect_element', 'dom_half',
 
         'sw1_graphic', 'sw2_graphic', 'sw3_graphic', 'sw4_graphic',
         *__FROM_SW,
