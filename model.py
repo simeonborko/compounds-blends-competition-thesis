@@ -222,6 +222,8 @@ class Overview(StaticView):
         'wfp_specification',
         'wfp_strict_modification',
         'connect_element',
+        'what_connect_element',
+        'dom_half',
         'age',
         'sex',
         'first_language',
