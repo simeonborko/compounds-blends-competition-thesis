@@ -7,6 +7,8 @@ CREATE OR REPLACE VIEW `nu_full` AS
     NU.wfp_specification as wfp_specification,
     NU.wfp_strict_modification as wfp_strict_modification,
     NU.connect_element as connect_element,
+    NU.what_connect_element as what_connect_element,
+    NU.dom_half as dom_half,
     `NU`.`image_id` AS `image_id`,
     `NU`.`nu_phonetic` AS `nu_phonetic`,
     `NU`.`nu_syllabic` AS `nu_syllabic`,
