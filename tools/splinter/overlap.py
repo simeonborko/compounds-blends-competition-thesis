@@ -16,11 +16,17 @@ class Overlap:
 
         if len(naming_unit) == 0:
             raise ValueError("naming_unit cannot be an empty sequence")
+        if len(alignments) == 0:
+            raise ValueError("alignments cannot be empty")
         if None in alignments:
             raise ValueError("alignments cannot contain None")
 
+        nu_lengths = {a.nu_length for a in alignments}
+        if len(nu_lengths) != 1:
+            raise ValueError("aligments have to be based on one and the same naming unit")
+
         self._naming_unit = naming_unit
-        self._nu_length = len(naming_unit)
+        self._nu_length = next(iter(nu_lengths))
         self._alignments = alignments
         self._space = space
 

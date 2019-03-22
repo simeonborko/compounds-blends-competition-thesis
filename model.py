@@ -682,8 +682,6 @@ class NamingUnitTable(Table):
         'nu_graphic_len', 'G_nu_graphic_len',
         'nu_phonetic_len', 'G_nu_phonetic_len',
         'nu_syllabic_len', 'G_nu_syllabic_len',
-        'n_of_overlapping_letters', 'G_n_of_overlapping_letters',
-        'n_of_overlapping_phones', 'G_n_of_overlapping_phones',
         # 'lexsh_main', 'G_lexsh_main', 'G_lexsh_main__ignore', 'lexsh_sm', 'G_lexsh_sm', 'G_lexsh_sm__ignore',
         # 'lexsh_whatm', 'G_lexsh_whatm', 'G_lexsh_whatm__ignore',
         # 'split_point_1', 'G_split_point_1', 'split_point_2', 'G_split_point_2', 'split_point_3', 'G_split_point_3'
@@ -699,8 +697,8 @@ class NamingUnitTable(Table):
 
     _HIDDEN_BUT_GENERATED = {
         'G_lexsh_main', 'G_lexsh_sm', 'G_lexsh_whatm',
-        'G_split_point_1', 'G_split_point_2', 'G_split_point_3'
-        'G_overlapping_letters', 'G_overlapping_phones', 'G_n_overlapping_letters', 'G_n_overlapping_phones',
+        'G_split_point_1', 'G_split_point_2', 'G_split_point_3',
+        'G_overlapping_letters', 'G_overlapping_phones', 'G_n_of_overlapping_letters', 'G_n_of_overlapping_phones',
     }
 
     _PRIMARY = 4
@@ -715,9 +713,46 @@ class NamingUnitTable(Table):
     IF(GM.sw1_splinter IS NULL OR GM.sw1_splinter = '', GM.G_sw1_splinter, GM.sw1_splinter) AS gm_sw1_splinter,
     IF(GM.sw2_splinter IS NULL OR GM.sw2_splinter = '', GM.G_sw2_splinter, GM.sw2_splinter) AS gm_sw2_splinter,
     IF(GM.sw3_splinter IS NULL OR GM.sw3_splinter = '', GM.G_sw3_splinter, GM.sw3_splinter) AS gm_sw3_splinter,
-    IF(GM.sw4_splinter IS NULL OR GM.sw4_splinter = '', GM.G_sw4_splinter, GM.sw4_splinter) AS gm_sw4_splinter
+    IF(GM.sw4_splinter IS NULL OR GM.sw4_splinter = '', GM.G_sw4_splinter, GM.sw4_splinter) AS gm_sw4_splinter,
+    
+    IF(PS.sw1_splinter IS NULL OR PS.sw1_splinter = '', PS.G_sw1_splinter, PS.sw1_splinter) AS ps_sw1_splinter,
+    IF(PS.sw2_splinter IS NULL OR PS.sw2_splinter = '', PS.G_sw2_splinter, PS.sw2_splinter) AS ps_sw2_splinter,
+    IF(PS.sw3_splinter IS NULL OR PS.sw3_splinter = '', PS.G_sw3_splinter, PS.sw3_splinter) AS ps_sw3_splinter,
+    IF(PS.sw4_splinter IS NULL OR PS.sw4_splinter = '', PS.G_sw4_splinter, PS.sw4_splinter) AS ps_sw4_splinter,
+    
+    IF(PM.sw1_splinter IS NULL OR PM.sw1_splinter = '', PM.G_sw1_splinter, PM.sw1_splinter) AS pm_sw1_splinter,
+    IF(PM.sw2_splinter IS NULL OR PM.sw2_splinter = '', PM.G_sw2_splinter, PM.sw2_splinter) AS pm_sw2_splinter,
+    IF(PM.sw3_splinter IS NULL OR PM.sw3_splinter = '', PM.G_sw3_splinter, PM.sw3_splinter) AS pm_sw3_splinter,
+    IF(PM.sw4_splinter IS NULL OR PM.sw4_splinter = '', PM.G_sw4_splinter, PM.sw4_splinter) AS pm_sw4_splinter,
+    
+    IF(SW1.sw_phonetic IS NULL OR SW1.sw_phonetic = '', SW1.G_sw_phonetic, SW1.sw_phonetic) AS sw1_phonetic,
+    IF(SW2.sw_phonetic IS NULL OR SW2.sw_phonetic = '', SW2.G_sw_phonetic, SW2.sw_phonetic) AS sw2_phonetic,
+    IF(SW3.sw_phonetic IS NULL OR SW3.sw_phonetic = '', SW3.G_sw_phonetic, SW3.sw_phonetic) AS sw3_phonetic,
+    IF(SW4.sw_phonetic IS NULL OR SW4.sw_phonetic = '', SW4.G_sw_phonetic, SW4.sw_phonetic) AS sw4_phonetic
     
     FROM naming_unit NU
+    
+    LEFT JOIN source_word SW1 ON (
+      NU.sw1_graphic = SW1.sw_graphic
+      AND NU.first_language = SW1.first_language
+      AND NU.survey_language = SW1.survey_language
+    )
+    LEFT JOIN source_word SW2 ON (
+      NU.sw2_graphic = SW2.sw_graphic
+      AND NU.first_language = SW2.first_language
+      AND NU.survey_language = SW2.survey_language
+    )
+    LEFT JOIN source_word SW3 ON (
+      NU.sw3_graphic = SW3.sw_graphic
+      AND NU.first_language = SW3.first_language
+      AND NU.survey_language = SW3.survey_language
+    )
+    LEFT JOIN source_word SW4 ON (
+      NU.sw4_graphic = SW4.sw_graphic
+      AND NU.first_language = SW4.first_language
+      AND NU.survey_language = SW4.survey_language
+    )
+    
     LEFT JOIN splinter GS ON (
       NU.nu_graphic = GS.nu_graphic
       AND NU.first_language = GS.first_language
@@ -731,6 +766,20 @@ class NamingUnitTable(Table):
       AND NU.survey_language = GM.survey_language
       AND NU.image_id = GM.image_id
       AND GM.type_of_splinter = 'graphic modified'
+    )
+    LEFT JOIN splinter PS ON (
+      NU.nu_graphic = PS.nu_graphic
+      AND NU.first_language = PS.first_language
+      AND NU.survey_language = PS.survey_language
+      AND NU.image_id = PS.image_id
+      AND PS.type_of_splinter = 'phonetic strict'
+    )
+    LEFT JOIN splinter PM ON (
+      NU.nu_graphic = PM.nu_graphic
+      AND NU.first_language = PM.first_language
+      AND NU.survey_language = PM.survey_language
+      AND NU.image_id = PM.image_id
+      AND PM.type_of_splinter = 'phonetic modified'
     )
     """
 

@@ -1,11 +1,12 @@
 from abc import abstractmethod, ABC
 
+import sys
 from syllabiky.syllabiky import split_phrase
 from syllabiky.DbMatcher import DbMatcher
 from tools import sk, en
 from tools.exception import WordSegmentException
 from tools.splinter import SlovakGraphicSplinter, SlovakPhoneticSplinter, EnglishGraphicSplinter, \
-    EnglishPhoneticSplinter
+    EnglishPhoneticSplinter, Overlap
 
 
 class Entity(ABC):
@@ -207,12 +208,61 @@ class NamingUnit(Entity):
             self['G_lexsh_sm'] = ''
         self['G_lexsh_whatm'] = '+'.join(lexsh_whatm)
 
+    def __overlap_segments(self, SplinterCls, graphic: bool):
+
+        alignments = []
+
+        gr_ph = 'graphic' if graphic else 'phonetic'
+        naming_unit = self[f'nu_{gr_ph}']
+
+        overlapping = None
+        overlap_number = None
+
+        if naming_unit:
+
+            for i in range(4):
+                source_word = self['sw{}_{}'.format(i + 1, gr_ph)]
+                splinter = self['{}s_sw{}_splinter'.format('g' if graphic else 'p', i + 1)]
+                if not source_word or not splinter:
+                    break
+
+                try:
+                    strict = SplinterCls(naming_unit, source_word, True)
+                    strict.set_splinter(splinter)
+                except WordSegmentException as e:
+                    print(e, file=sys.stderr)
+                    break
+
+                if not strict.alignment:
+                    break
+
+                alignments.append(strict.alignment)
+
+            if len(alignments):
+                overlap = Overlap(naming_unit, alignments, not graphic)
+                overlapping = overlap.overlapping_segments
+                overlap_number = overlap.number_of_overlapping_segments
+
+        name = 'letters' if graphic else 'phones'
+
+        self[f'G_overlapping_{name}'] = overlapping
+        self[f'G_n_of_overlapping_{name}'] = overlap_number
+
+    def __overlap(self):
+        if self.__lang == 'SK':
+            self.__overlap_segments(SlovakGraphicSplinter, True)
+            self.__overlap_segments(SlovakPhoneticSplinter, False)
+        else:
+            self.__overlap_segments(EnglishGraphicSplinter, True)
+            self.__overlap_segments(EnglishPhoneticSplinter, False)
+
     def generate(self):
         self.__nu_syllabic()
         self.__nu_graphic_len()
         self.__nu_phonetic_len()
         self.__nu_syllabic_len()
         self.__lexsh()
+        self.__overlap()
 
 
 class Splinter(Entity):
@@ -259,4 +309,3 @@ class Splinter(Entity):
 
                     self['G_sw{}_splinter'.format(i)] = splinter
                     self['G_sw{}_splinter_len'.format(i)] = length
-
