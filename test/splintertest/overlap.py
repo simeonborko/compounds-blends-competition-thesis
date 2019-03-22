@@ -13,9 +13,9 @@ class OverlapTest(TestCase):
         s1.find_splinter()
         s2.find_splinter()
 
-        overlap = Overlap('krokačka', [s1.alignment, s2.alignment])
+        overlap = Overlap('krokačka', [s1.alignment, s2.alignment], SplinterCls)
         self.assertEqual(1, overlap.number_of_overlapping_segments)
-        self.assertListEqual(['k'], overlap.overlapping_segments)
+        self.assertEqual('k', overlap.overlapping_segments)
         self.assertListEqual([3], overlap._overlapping_indexes)
 
     def test_krokacka(self):
@@ -35,9 +35,9 @@ class OverlapTest(TestCase):
         s1.find_splinter()
         s2.find_splinter()
 
-        overlap = Overlap(nu, [s1.alignment, s2.alignment])
+        overlap = Overlap(nu, [s1.alignment, s2.alignment], Splinter)
         self.assertEqual(0, overlap.number_of_overlapping_segments)
-        self.assertListEqual([], overlap.overlapping_segments)
+        self.assertEqual('', overlap.overlapping_segments)
         self.assertListEqual([], overlap._overlapping_indexes)
 
     def test_no_overlap_1(self):

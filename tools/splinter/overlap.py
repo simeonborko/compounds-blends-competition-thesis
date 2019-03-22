@@ -1,4 +1,4 @@
-from typing import List, Sequence
+from typing import List
 
 from cached_property import cached_property
 
@@ -7,7 +7,12 @@ from tools.splinter import Alignment
 
 class Overlap:
 
-    def __init__(self, naming_unit: Sequence, alignments: List[Alignment]):
+    def __init__(self, naming_unit: str, alignments: List[Alignment], space: bool = False):
+        """
+        :param naming_unit: naming unit, pre ktore sa bude robit overlap
+        :param alignments: zarovnania s jednotlivymi zdrojovymi slovami
+        :param space: ci vo vystupnom retazci vkladat medzery medzi jednotlive segmenty
+        """
 
         if len(naming_unit) == 0:
             raise ValueError("naming_unit cannot be an empty sequence")
@@ -17,6 +22,7 @@ class Overlap:
         self._naming_unit = naming_unit
         self._nu_length = len(naming_unit)
         self._alignments = alignments
+        self._space = space
 
     def _counters(self) -> List[int]:
 
@@ -36,8 +42,9 @@ class Overlap:
         return [idx for idx, counter in enumerate(self._counters()) if counter > 1]
 
     @property
-    def overlapping_segments(self) -> list:
-        return [self._naming_unit[idx] for idx in self._overlapping_indexes]
+    def overlapping_segments(self) -> str:
+        segments = [self._naming_unit[idx] for idx in self._overlapping_indexes]
+        return (' ' if self._space else '').join(segments)
 
     @property
     def number_of_overlapping_segments(self) -> int:
