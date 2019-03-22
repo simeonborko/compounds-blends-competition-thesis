@@ -341,6 +341,10 @@ class Overview(StaticView):
         'pm_sw2_splinter_len_to_nu_len',
         'pm_sw3_splinter_len_to_nu_len',
         'pm_sw4_splinter_len_to_nu_len',
+        'overlapping_letters',
+        'overlapping_phones',
+        'n_of_overlapping_letters',
+        'n_of_overlapping_phones',
     )
 
     _EXPORT_SELECT = """SELECT {} FROM (
@@ -690,11 +694,13 @@ class NamingUnitTable(Table):
         'lexsh_sm', 'G_lexsh_sm__ignore',
         'lexsh_whatm', 'G_lexsh_whatm__ignore',
         'split_point_1', 'split_point_2', 'split_point_3',
+        'overlapping_letters', 'overlapping_phones', 'n_overlapping_letters', 'n_overlapping_phones',
     }
 
     _HIDDEN_BUT_GENERATED = {
         'G_lexsh_main', 'G_lexsh_sm', 'G_lexsh_whatm',
         'G_split_point_1', 'G_split_point_2', 'G_split_point_3'
+        'G_overlapping_letters', 'G_overlapping_phones', 'G_n_overlapping_letters', 'G_n_overlapping_phones',
     }
 
     _PRIMARY = 4
@@ -967,6 +973,7 @@ class SplinterView(EditableTableLike):
     __NU_EDITABLE = {
         'lexsh_main', 'lexsh_sm', 'lexsh_whatm',
         'split_point_1', 'split_point_2', 'split_point_3',
+        'overlapping_letters', 'overlapping_phones', 'n_of_overlapping_letters', 'n_of_overlapping_phones',
     }
 
     # ktore stlpce z naming unit tabulky chceme
@@ -979,12 +986,15 @@ class SplinterView(EditableTableLike):
         'nu_graphic_len',
         'nu_phonetic_len',
         'nu_syllabic_len',
-        'n_of_overlapping_letters',
-        'n_of_overlapping_phones',
+
         'lexsh_main', 'lexsh_sm', 'lexsh_whatm',
         'G_lexsh_main', 'G_lexsh_sm', 'G_lexsh_whatm',
+
         'split_point_1', 'split_point_2', 'split_point_3',
         'G_split_point_1', 'G_split_point_2', 'G_split_point_3',
+
+        'overlapping_letters', 'overlapping_phones', 'n_of_overlapping_letters', 'n_of_overlapping_phones',
+        'G_overlapping_letters', 'G_overlapping_phones', 'G_n_of_overlapping_letters', 'G_n_of_overlapping_phones',
     )
 
     # ktore stlpce z image tabulky chceme
