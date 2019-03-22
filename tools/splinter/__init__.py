@@ -1,2 +1,3 @@
 from .splinter import Splinter, SlovakGraphicSplinter, SlovakPhoneticSplinter, \
-    EnglishGraphicSplinter, EnglishPhoneticSplinter, LexshType
+    EnglishGraphicSplinter, EnglishPhoneticSplinter, LexshType, Alignment
+from .overlap import Overlap

@@ -54,6 +54,10 @@ class Alignment:
     def sw_range(self) -> range:
         return self._sw_range
 
+    @property
+    def nu_length(self) -> int:
+        return len(self._nu)
+
 
 class Splinter:
 
