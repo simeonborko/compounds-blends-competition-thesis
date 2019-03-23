@@ -643,9 +643,13 @@ class LanguageTable(Table):
 
 class NamingUnitTable(Table):
 
-    __FROM_SW = (
+    __FROM_SW_A = (
         'sw1_source_language', 'sw2_source_language', 'sw3_source_language', 'sw4_source_language',
         'sw1_word_class', 'sw2_word_class', 'sw3_word_class', 'sw4_word_class',
+    )
+
+    __FROM_SW_B = (
+        'sw1_phonetic', 'sw2_phonetic', 'sw3_phonetic', 'sw4_phonetic',
     )
 
     __FROM_IMG = (
@@ -663,8 +667,9 @@ class NamingUnitTable(Table):
 
     _NAME = 'naming_unit'
 
-    _EXCLUDE_EDITABLE = set(__FROM_SW) | set(__FROM_IMG)
+    _EXCLUDE_EDITABLE = set(__FROM_SW_A) | set(__FROM_SW_B) | set(__FROM_IMG)
     _EXCLUDE_GENERATED = _EXCLUDE_EDITABLE
+    __EXCLUDE_FROM_JUNK = _EXCLUDE_EDITABLE
 
     _FIELDS = (
         'nu_graphic', 'first_language', 'survey_language', 'image_id',
@@ -673,11 +678,12 @@ class NamingUnitTable(Table):
         'connect_element', 'what_connect_element', 'dom_half',
 
         'sw1_graphic', 'sw2_graphic', 'sw3_graphic', 'sw4_graphic',
-        *__FROM_SW,
+        *__FROM_SW_A,
         'sw1_headmod', 'sw2_headmod', 'sw3_headmod', 'sw4_headmod',
         'sw1_subdom', 'sw2_subdom', 'sw3_subdom', 'sw4_subdom',
 
         'nu_word_class', 'nu_phonetic',
+        *__FROM_SW_B,
         'nu_syllabic', 'G_nu_syllabic', 'G_nu_syllabic__ignore',
         'nu_graphic_len', 'G_nu_graphic_len',
         'nu_phonetic_len', 'G_nu_phonetic_len',
@@ -798,6 +804,10 @@ class NamingUnitTable(Table):
         # stlpce, ktore budu v selecte
         sel_fields = [
             "NU.*",
+            "`SW1`.`sw_phonetic`     AS `sw1_phonetic`",
+            "`SW2`.`sw_phonetic`     AS `sw2_phonetic`",
+            "`SW3`.`sw_phonetic`     AS `sw3_phonetic`",
+            "`SW4`.`sw_phonetic`     AS `sw4_phonetic`",
             "`SW1`.`sw_word_class`   AS `sw1_word_class`",
             "`SW2`.`sw_word_class`   AS `sw2_word_class`",
             "`SW3`.`sw_word_class`   AS `sw3_word_class`",
@@ -836,7 +846,7 @@ class NamingUnitTable(Table):
          and `NU`.`survey_language` = `SW4`.`survey_language`
          and `NU`.`sw4_graphic` = `SW4`.`sw_graphic`""".format(', '.join(sel_fields))
         )
-        self._INTEGRITY_JUNK_FIELDS = tuple(f for f in self._FIELDS if f not in self.__FROM_SW)
+        self._INTEGRITY_JUNK_FIELDS = tuple(f for f in self._FIELDS if f not in self.__EXCLUDE_FROM_JUNK)
 
     # noinspection PyUnusedLocal
     def generate(self, force, **kwargs) -> int:
