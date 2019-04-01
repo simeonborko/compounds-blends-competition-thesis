@@ -45,11 +45,11 @@ class Corpus:
 
         self.data[word] = freq
         print(word, freq, sep='\t')
-        sleep(30)
+        sleep(5)
 
         return freq
 
-    def __init__(self, filename):
+    def __init__(self, filename: str):
 
         self.filename = filename
 
