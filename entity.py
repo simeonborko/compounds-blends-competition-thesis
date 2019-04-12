@@ -258,6 +258,13 @@ class NamingUnit(Entity):
             self.__overlap_segments(EnglishGraphicSplinter, True)
             self.__overlap_segments(EnglishPhoneticSplinter, False)
 
+    def __split_point_placement(self):
+        # vyzaduje, aby bolo predtym spustene __lexsh()
+        pass
+        # if not self['G_lexsh_main']:
+        #     return
+        # shortenings = self['G_lexsh_main'].split('+')
+
     def generate(self):
         self.__nu_syllabic()
         self.__nu_graphic_len()

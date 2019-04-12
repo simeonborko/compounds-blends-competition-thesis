@@ -2,6 +2,7 @@ from abc import ABCMeta, abstractmethod
 from enum import Enum, auto
 from typing import Optional, Sequence, List, Callable
 
+import itertools
 from unidecode import unidecode
 
 from tools import sk, en
@@ -12,6 +13,12 @@ class LexshType(Enum):
     LS = auto()
     RS = auto()
     RSLS = auto()
+
+
+class SplitPointType(Enum):
+    NUCL_CODA = auto()   # samohlaska - spoluhlaska
+    SYLLABLE = auto()
+    ONSET_NUCL = auto()  # spoluhlaska - samohlaska
 
 
 class Alignment:
@@ -58,6 +65,10 @@ class Alignment:
     def nu_length(self) -> int:
         return len(self._nu)
 
+    # @property
+    # def sw_length(self) -> int:
+    #     return len(self._sw)
+
 
 class Splinter:
 
@@ -66,6 +77,8 @@ class Splinter:
         self.__sourceword = sourceword
         self.__namingunit_orig = namingunit_orig if namingunit_orig is not None else namingunit
         self.__alignment = None
+
+        self._sourceword = sourceword  # kvoli get_split_point
 
     def __all_alignments(self) -> List[Alignment]:
         aligns = []
@@ -180,6 +193,56 @@ class SlovakGraphicSplinter(GraphicSplinter):
     @staticmethod
     def modify(expr: str) -> str:
         return unidecode(expr).replace('y', 'i')
+
+    def __analyze_split_point_pair(self, sw_a_idx: int, sw_b_idx: int, map_letter_to_syll: List[int]) -> Optional[SplitPointType]:
+
+        if map_letter_to_syll[sw_a_idx] != map_letter_to_syll[sw_b_idx]:
+            # su v roznych slabikach
+            return SplitPointType.SYLLABLE
+
+        a_type = sk.Letters.get_type(self._sourceword[sw_a_idx])
+        b_type = sk.Letters.get_type(self._sourceword[sw_b_idx])
+
+        if a_type == 'v' and b_type == 'c':
+            # samohlaska, spoluhlaska
+            return SplitPointType.NUCL_CODA
+
+        elif a_type == 'c' and b_type == 'v':
+            # spoluhlaska, samohlaska
+            return SplitPointType.ONSET_NUCL
+
+        else:
+            return None
+
+    def get_split_point(self, syllables: str) -> Optional[SplitPointType]:
+        """
+        syllables je string, slabiky su oddelene pomlckami (-)
+        """
+
+        if not syllables:
+            return None
+
+        syll_list = syllables.split('-')
+
+        # priklad:
+        # syll_list = ['sla', 'bi', 'ky']
+        # =>
+        # map_letter_to_syll = [0, 0, 0, 1, 1, 2, 2]
+        map_letter_to_syll = list(itertools.chain.from_iterable(
+            [i] * len(syll) for i, syll in enumerate(syll_list)
+        ))
+
+        lexsh = self.lexical_shortening
+        rng = self.alignment.sw_range
+
+        if lexsh == LexshType.RS:
+            return self.__analyze_split_point_pair(rng.stop - 1, rng.stop, map_letter_to_syll)
+
+        elif lexsh == LexshType.LS:
+            return self.__analyze_split_point_pair(rng.start, rng.start + 1, map_letter_to_syll)
+
+        else:
+            return None
 
 
 class SlovakPhoneticSplinter(PhoneticSplinter):
