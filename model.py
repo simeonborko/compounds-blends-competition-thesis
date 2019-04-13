@@ -674,6 +674,7 @@ class NamingUnitTable(Table):
     _FIELDS = (
         'nu_graphic', 'first_language', 'survey_language', 'image_id',
         *__FROM_IMG,
+        'nu_source_language',
         'wf_process', 'wfp_specification', 'wfp_strict_modification',
         'connect_element', 'what_connect_element', 'dom_half',
 
@@ -1038,6 +1039,7 @@ class SplinterView(EditableTableLike):
     # ktore stlpce z naming unit tabulky chceme
     __NU_FIELDS = (
         'nu_graphic', 'first_language', 'survey_language', 'image_id',
+        'nu_source_language',
         'wf_process', 'wfp_specification',
         'wfp_strict_modification', 'connect_element',
         'nu_word_class', 'nu_phonetic',
