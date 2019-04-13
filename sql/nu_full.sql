@@ -10,6 +10,7 @@ CREATE OR REPLACE VIEW `nu_full` AS
     NU.what_connect_element as what_connect_element,
     NU.dom_half as dom_half,
     `NU`.`image_id` AS `image_id`,
+    NU.nu_source_language AS nu_source_language,
     `NU`.`nu_phonetic` AS `nu_phonetic`,
     `NU`.`nu_syllabic` AS `nu_syllabic`,
     `NU`.`nu_graphic_len` AS `nu_graphic_len`,
