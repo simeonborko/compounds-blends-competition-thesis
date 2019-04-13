@@ -1,5 +1,6 @@
 from typing import Optional, List
 
+import itertools
 from unidecode import unidecode
 from sys import stderr
 
@@ -53,6 +54,25 @@ def get_letters_list(word, chdzdz=True) -> list:
 def count_letters(word, chdzdz=True) -> int:
     """Spocita pocet pismen"""
     return len(get_letters_list(word, chdzdz))
+
+
+def get_syllables_list(syllabic_form: str) -> List[List[str]]:
+    """syllabic_form je string, kde su slabiky oddelene pomlckami (-)"""
+    return [
+        get_letters_list(syll)
+        for syll in syllabic_form.split('-')
+    ]
+
+
+def get_map_letter_to_syll(syllabic_form: str) -> List[int]:
+    """
+    syllabic_form je string, kde su slabiky oddelene pomlckami (-)
+    Vrati zoznam, kde na i-tej pozicii je cislo slabiky, do ktorej patri i-te pismenko.
+    """
+    syll_list = get_syllables_list(syllabic_form)
+    return list(itertools.chain.from_iterable(
+        [i] * len(syll) for i, syll in enumerate(syll_list)
+    ))
 
 
 def __find_phones(word) -> Optional[List[str]]:

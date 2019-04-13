@@ -203,12 +203,12 @@ class SlovakGraphicSplinter(GraphicSplinter):
         a_type = sk.Letters.get_type(self._sourceword[sw_a_idx])
         b_type = sk.Letters.get_type(self._sourceword[sw_b_idx])
 
-        if a_type == 'v' and b_type == 'c':
-            # samohlaska, spoluhlaska
+        if a_type in ('v', 'd') and b_type == 'c':
+            # samohlaska / dvojhlaska, spoluhlaska
             return SplitPointType.NUCL_CODA
 
-        elif a_type == 'c' and b_type == 'v':
-            # spoluhlaska, samohlaska
+        elif a_type == 'c' and b_type in ('v', 'd'):
+            # spoluhlaska, samohlaska / dvojhlaska
             return SplitPointType.ONSET_NUCL
 
         else:
@@ -222,15 +222,9 @@ class SlovakGraphicSplinter(GraphicSplinter):
         if not syllables:
             return None
 
-        syll_list = syllables.split('-')
-
-        # priklad:
-        # syll_list = ['sla', 'bi', 'ky']
-        # =>
-        # map_letter_to_syll = [0, 0, 0, 1, 1, 2, 2]
-        map_letter_to_syll = list(itertools.chain.from_iterable(
-            [i] * len(syll) for i, syll in enumerate(syll_list)
-        ))
+        # chyz-ka => 0 0 0 1 1
+        # sla-bi-ky => 0 0 0 1 1 2 2
+        map_letter_to_syll = sk.get_map_letter_to_syll(syllables)
 
         lexsh = self.lexical_shortening
         rng = self.alignment.sw_range
@@ -273,3 +267,42 @@ class EnglishPhoneticSplinter(PhoneticSplinter):
     @staticmethod
     def modify(expr: str) -> str:
         return en.Phones.shorten_vowels(expr)
+
+    def __analyze_split_point_pair(self, sw_a_idx: int, sw_b_idx: int, map_letter_to_syll: List[int]) -> Optional[SplitPointType]:
+
+        if map_letter_to_syll[sw_a_idx] != map_letter_to_syll[sw_b_idx]:
+            # su v roznych slabikach
+            return SplitPointType.SYLLABLE
+
+        a_type = en.Phones.get_type(self._sourceword[sw_a_idx])
+        b_type = en.Phones.get_type(self._sourceword[sw_b_idx])
+
+        if a_type in ('v', 'd') and b_type == 'c':
+            # samohlaska / dvojhlaska, spoluhlaska
+            return SplitPointType.NUCL_CODA
+
+        elif a_type == 'c' and b_type in ('v', 'd'):
+            # spoluhlaska, samohlaska / dvojhlaska
+            return SplitPointType.ONSET_NUCL
+
+        else:
+            return None
+
+    def get_split_point(self, nu_phonetic: str) -> Optional[SplitPointType]:
+
+        if not nu_phonetic:
+            return None
+
+        map_phone_to_syll = en.get_map_phone_to_syll(nu_phonetic)
+
+        lexsh = self.lexical_shortening
+        rng = self.alignment.sw_range
+
+        if lexsh == LexshType.RS:
+            return self.__analyze_split_point_pair(rng.stop - 1, rng.stop, map_phone_to_syll)
+
+        elif lexsh == LexshType.LS:
+            return self.__analyze_split_point_pair(rng.start, rng.start + 1, map_phone_to_syll)
+
+        else:
+            return None

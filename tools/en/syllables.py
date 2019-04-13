@@ -1,4 +1,5 @@
 from functools import reduce
+from typing import List
 
 
 def __remove_stress_and_hyphen(expr):
@@ -43,7 +44,7 @@ def remove_syllable_division(phonetic):
     return [word.replace('.', '') for word in __remove_stress_and_hyphen(phonetic)]
 
 
-def get_syllables(phonetic):
+def get_syllables(phonetic) -> List[str]:
     """
     Rozdeli foneticky prepis na slabiky.
     :param phonetic: Retazec (moze obsahovat medzery).

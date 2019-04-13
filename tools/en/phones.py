@@ -1,4 +1,8 @@
-from .syllables import remove_syllable_division, get_syllables as __get_syllables
+from typing import List
+
+import itertools
+
+from .syllables import remove_syllable_division, get_syllables
 import re
 import sys
 
@@ -58,9 +62,15 @@ def count_phones(phonetic, query='', number=None):
 
 def get_syllable_list(phonetic):
     """Ziska zoznam slabik, pricom slabika je zoznam hlasok"""
-    return [get_phones_list(syllable) for syllable in __get_syllables(phonetic)]
+    return [get_phones_list(syllable) for syllable in get_syllables(phonetic)]
 
 
 def get_syllable_lengths(phonetic):
     """Ziska pocty hlasok v slabikach"""
     return [len(syllable) for syllable in get_syllable_list(phonetic)]
+
+
+def get_map_phone_to_syll(phonetic: str) -> List[int]:
+    return list(itertools.chain.from_iterable(
+        [i] * syll_len for i, syll_len in enumerate(get_syllable_lengths(phonetic))
+    ))
