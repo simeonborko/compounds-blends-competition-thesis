@@ -5,13 +5,19 @@ Podmienky: first_language not in [SK, EN] or age < 16
 
 from tools import Connection
 
+query = """SELECT respondent_id FROM respondent
+WHERE first_language != 'SK' AND first_language != 'EN'
+  OR first_language != survey_language
+  OR age < 16
+  OR age > 100
+  OR sex != 'F' AND sex != 'M'
+"""
+
 if __name__ == '__main__':
     with Connection() as conn:
 
         c = conn.cursor()
-        c.execute(
-            "SELECT respondent_id FROM respondent WHERE first_language != 'SK' AND first_language != 'EN' OR age < 16 OR sex != 'F' AND sex != 'M'"
-        )
+        c.execute(query)
         res_ids = [res_id for res_id, in c]
         for res_id in res_ids:
 
