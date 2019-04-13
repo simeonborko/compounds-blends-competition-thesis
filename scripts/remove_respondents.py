@@ -10,7 +10,7 @@ if __name__ == '__main__':
 
         c = conn.cursor()
         c.execute(
-            "SELECT respondent_id FROM respondent WHERE first_language != 'SK' AND first_language != 'EN' OR age < 16"
+            "SELECT respondent_id FROM respondent WHERE first_language != 'SK' AND first_language != 'EN' OR age < 16 OR sex != 'F' AND sex != 'M'"
         )
         res_ids = [res_id for res_id, in c]
         for res_id in res_ids:
