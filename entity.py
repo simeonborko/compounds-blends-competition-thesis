@@ -267,6 +267,29 @@ class NamingUnit(Entity):
 
 class Splinter(Entity):
 
+    # korpusy ma nastavit volajuci
+    SLOVAK_CORPUS = None
+    BNC_CORPUS = None
+
+    def corpus_freq(self):
+
+        if self['type_of_splinter'].startswith('graphic') is False:
+            return
+
+        if self['survey_language'] == 'SK' and self.SLOVAK_CORPUS is not None:
+            for i in range(1, 4+1):
+                spl = self[f'sw{i}_splinter']
+                if not spl:
+                    spl = self[f'G_sw{i}_splinter']
+                self[f'sw{i}_splinter_freq_exact'] = self.SLOVAK_CORPUS.get_frequency(spl) if spl else None
+
+        elif self['survey_language'] == 'EN' and self.BNC_CORPUS is not None:
+            for i in range(1, 4+1):
+                spl = self[f'sw{i}_splinter']
+                if not spl:
+                    spl = self[f'G_sw{i}_splinter']
+                    self[f'sw{i}_splinter_freq_exact'] = self.SLOVAK_CORPUS.get_frequency(spl) if spl else None
+
     def generate(self):
         graphic = self['type_of_splinter'].startswith('graphic')
         phonetic = self['type_of_splinter'].startswith('phonetic')
@@ -309,3 +332,5 @@ class Splinter(Entity):
 
                     self['G_sw{}_splinter'.format(i)] = splinter
                     self['G_sw{}_splinter_len'.format(i)] = length
+
+        self.corpus_freq()

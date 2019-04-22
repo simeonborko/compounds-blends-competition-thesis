@@ -1012,9 +1012,34 @@ WHERE
   )
 """
 
-    # noinspection PyUnusedLocal
+    @staticmethod
+    @contextmanager
+    def _sk_corpus_context_manager():
+        with sk.Corpus(configuration.CORPUS_FILE) as corpus:
+            Splinter.SLOVAK_CORPUS = corpus
+            try:
+                yield
+            finally:
+                Splinter.SLOVAK_CORPUS = None
+
+    @staticmethod
+    @contextmanager
+    def _en_corpus_context_manager():
+        with en.BncCorpus(configuration.BNC_CORPUS_FILE, configuration.BNC_CORPUS_NOT_FOUND_LIST_FILE) as bnc_corpus:
+            Splinter.BNC_CORPUS = bnc_corpus
+            try:
+                yield
+            finally:
+                Splinter.BNC_CORPUS = None
+
     def generate(self, force, **kwargs) -> int:
-        return self._generate(force, Splinter)
+        with ExitStack() as stack:
+            if kwargs['corpus']:
+                stack.enter_context(self._sk_corpus_context_manager())
+            if kwargs['bnc_corpus']:
+                stack.enter_context(self._en_corpus_context_manager())
+
+            return self._generate(force, Splinter)
 
 
 class SplinterView(EditableTableLike):
