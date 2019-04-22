@@ -80,7 +80,7 @@ class AbstractBncCorpus(ABC):
         if self.data is not None and word in self.data:
             return self.data[word]
 
-        if word in self.not_found_set:
+        if self.not_found_set is not None and word in self.not_found_set:
             return None
 
         attempts = 2
