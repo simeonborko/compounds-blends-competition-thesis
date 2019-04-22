@@ -273,6 +273,10 @@ class Splinter(Entity):
 
     def corpus_freq(self):
 
+        # chceme to iba pre blendy
+        if self['wf_process'] != 'blend':
+            return
+
         if self['type_of_splinter'].startswith('graphic') is False:
             return
 

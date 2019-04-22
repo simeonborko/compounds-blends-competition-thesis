@@ -958,6 +958,15 @@ class SplinterTable(Table):
                'G_sw3_splinter_len', 'G_sw3_splinter_len__ignore', 'G_sw4_splinter_len', 'G_sw4_splinter_len__ignore')
     _PRIMARY = 5
 
+    __FREQ_COLUMNS = {
+        'sw1_splinter_freq_exact', 'sw2_splinter_freq_exact', 'sw3_splinter_freq_exact', 'sw4_splinter_freq_exact',
+        'sw1_splinter_freq_any', 'sw2_splinter_freq_any', 'sw3_splinter_freq_any', 'sw4_splinter_freq_any',
+    }
+
+    _EXCLUDE_EDITABLE = __FREQ_COLUMNS
+
+    _HIDDEN_BUT_GENERATED = __FREQ_COLUMNS
+
     _INTEGRITY_SELECT = "SELECT {} FROM naming_unit, ({}) T".format(
         ', '.join(_FIELDS[:_PRIMARY]),
         ' UNION '.join(
@@ -977,7 +986,7 @@ class SplinterTable(Table):
 
     _GENERATE_SELECT_ALL = """
 SELECT
-  SPL.*, NU.nu_phonetic, NU.sw1_graphic, NU.sw2_graphic, NU.sw3_graphic, NU.sw4_graphic,
+  SPL.*, NU.nu_phonetic, NU.sw1_graphic, NU.sw2_graphic, NU.sw3_graphic, NU.sw4_graphic, NU.wf_process,
   SW1.sw_phonetic sw1_phonetic, SW2.sw_phonetic sw2_phonetic, SW3.sw_phonetic sw3_phonetic, SW4.sw_phonetic sw4_phonetic
 FROM splinter SPL
   LEFT JOIN naming_unit NU
@@ -1110,6 +1119,8 @@ class SplinterView(EditableTableLike):
         'type_of_splinter',
         'sw1_splinter', 'sw2_splinter', 'sw3_splinter', 'sw4_splinter',
         'sw1_splinter_len', 'sw2_splinter_len', 'sw3_splinter_len', 'sw4_splinter_len',
+        'sw1_splinter_freq_exact', 'sw2_splinter_freq_exact', 'sw3_splinter_freq_exact', 'sw4_splinter_freq_exact',
+        'sw1_splinter_freq_any', 'sw2_splinter_freq_any', 'sw3_splinter_freq_any', 'sw4_splinter_freq_any',
         'G_sw1_splinter', 'G_sw1_splinter__ignore', 'G_sw2_splinter', 'G_sw2_splinter__ignore',
         'G_sw3_splinter', 'G_sw3_splinter__ignore', 'G_sw4_splinter', 'G_sw4_splinter__ignore',
         'G_sw1_splinter_len', 'G_sw1_splinter_len__ignore', 'G_sw2_splinter_len', 'G_sw2_splinter_len__ignore',
