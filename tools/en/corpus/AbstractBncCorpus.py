@@ -40,7 +40,7 @@ class AbstractBncCorpus(ABC):
 
     def params(self, query: str) -> Dict[str, str]:
         d = self.PARAMS.copy()
-        d['q'] = '[lemma="{}"]'.format(query)
+        d['q'] = '[word="{}"]'.format(query)
         return d
 
     @abstractmethod
