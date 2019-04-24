@@ -34,6 +34,8 @@ class Corpus:
         if word in self.data:
             return self.data[word]
 
+        print('Nenajdene v cachi, hlada sa:', word)
+
         freq = None
         while freq is None:
             try:

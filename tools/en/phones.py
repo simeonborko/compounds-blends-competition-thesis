@@ -44,10 +44,10 @@ def get_phones_list(phonetic, query='', number=None):
     expr = ''.join(remove_syllable_division(phonetic))
     phones_list = Phones.PATTERN.findall(expr)
 
-    if sum([len(phone) for phone in phones_list]) != len(expr):
-        found_phones = ' '.join(phones_list)
-        print(number, query, phonetic.replace('\n', '\\n'), expr.replace('\n', '\\n'), found_phones, sep='\t',
-              file=sys.stderr)
+    # if sum([len(phone) for phone in phones_list]) != len(expr):
+    #     found_phones = ' '.join(phones_list)
+    #     print(number, query, phonetic.replace('\n', '\\n'), expr.replace('\n', '\\n'), found_phones, sep='\t',
+    #           file=sys.stderr)
 
     return phones_list
 

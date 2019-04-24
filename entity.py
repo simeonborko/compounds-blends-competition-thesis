@@ -292,7 +292,7 @@ class Splinter(Entity):
                 spl = self[f'sw{i}_splinter']
                 if not spl:
                     spl = self[f'G_sw{i}_splinter']
-                    self[f'sw{i}_splinter_freq_exact'] = self.SLOVAK_CORPUS.get_frequency(spl) if spl else None
+                    self[f'sw{i}_splinter_freq_exact'] = self.BNC_CORPUS.get_frequency(spl) if spl else None
 
     def generate(self):
         graphic = self['type_of_splinter'].startswith('graphic')

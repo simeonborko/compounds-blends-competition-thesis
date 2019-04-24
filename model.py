@@ -5,6 +5,7 @@ from contextlib import contextmanager, ExitStack
 from itertools import groupby
 from typing import Iterable, Tuple, List, Set, Dict, Any, Optional
 
+import math
 from cached_property import cached_property
 from openpyxl import Workbook
 from openpyxl.cell import Cell
@@ -518,12 +519,16 @@ class Table(EditableTableLike, metaclass=ABCMeta):
         )
         self._execute(query, data)
 
-    def _generate(self, force: bool, cls) -> int:
-
-        c = self._execute(
+    # noinspection PyUnusedLocal
+    def _generate_get_executed_cursor(self, force: bool, **kwargs):
+        return self._execute(
             self._GENERATE_SELECT_ALL if force or not self._GENERATE_SELECT_NEEDED else self._GENERATE_SELECT_NEEDED,
             cursor=DictCursor
         ).cursor
+
+    def _generate(self, force: bool, cls, **kwargs) -> int:
+
+        c = self._generate_get_executed_cursor(force, **kwargs)
 
         args = []
 
@@ -1021,6 +1026,16 @@ WHERE
   )
 """
 
+    __ROWS_PER_PAGE = 2000
+
+    def _generate_get_executed_cursor(self, force: bool, **kwargs):
+        # ocakava sa kwargs['page'] - stranka, kde prva stranka je 0
+        offset = kwargs['page'] * self.__ROWS_PER_PAGE
+        return self._execute(
+            self._GENERATE_SELECT_ALL + " LIMIT {}, {}".format(offset, self.__ROWS_PER_PAGE),
+            cursor=DictCursor
+        ).cursor
+
     @staticmethod
     @contextmanager
     def _sk_corpus_context_manager():
@@ -1048,7 +1063,16 @@ WHERE
             if kwargs['bnc_corpus']:
                 stack.enter_context(self._en_corpus_context_manager())
 
-            return self._generate(force, Splinter)
+            # Splinter dat je mnoho, stavalo sa, ze MySQL server sa odpojil
+            # Preto sme zaviedli spracovanie po strankach, aby sme viac komunikovali so serverom a necitil sa osamelo
+            # funkcia _generate vola funkciu _generate_get_executed_cursor
+            s = 0
+            pages = math.ceil(self._execute("SELECT COUNT(*) FROM splinter").cursor.fetchone()[0] / self.__ROWS_PER_PAGE)
+            print('Splinter, pages:', pages)
+            for i in range(pages):
+                s += self._generate(force, Splinter, page=i)
+
+            return s
 
 
 class SplinterView(EditableTableLike):
