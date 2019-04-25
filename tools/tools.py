@@ -28,6 +28,28 @@ class Connection:
         self.conn.close()
 
 
+class CorpConnection:
+
+    def __enter__(self):
+
+        conv = dict(pymysql.converters.conversions)
+        conv[FIELD_TYPE.DECIMAL] = float
+        conv[FIELD_TYPE.NEWDECIMAL] = float
+
+        self.conn = pymysql.connect(
+            host=c.CORP_HOST,
+            port=c.CORP_PORT,
+            user=c.CORP_USER,
+            password=c.CORP_PASSWD,
+            database=c.CORP_DB,
+            conv=conv,
+        )
+        return self.conn
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.conn.close()
+
+
 def tsv_reader(fp):
     cr = csv.reader(fp, delimiter='\t')
     return map(lambda row: [c.strip() if len(c.strip()) > 0 else None for c in row], cr)

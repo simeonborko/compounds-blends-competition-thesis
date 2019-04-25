@@ -1,11 +1,13 @@
 HOST = 'mariadb101.websupport.sk'
 PORT = 3312
-USER = 'backupsimeon'
+USER = 'prod_filtered2'
 PASSWD = 'lydkineblendy'
-DB = 'backupsimeon'
+DB = 'prod_filtered2'
 
-# USER = DB = 'blanksimeon'
-# USER = DB = 'simeon'
+CORP_HOST = HOST
+CORP_PORT = PORT
+CORP_USER = CORP_DB = 'corpus'
+CORP_PASSWD = PASSWD
 
 SYNC_OVERVIEW = False
 
@@ -17,4 +19,4 @@ BNC_CORPUS_NOT_FOUND_LIST_FILE = '/home/simeon/PycharmProjects/lydkadb/bnc_corpu
 TKINTER_TRACEBACK = True
 BACKUP_FILE_FMT = '/tmp/test_{}.xlsx.bak'
 CAMBRIDGE_FILE = '/home/simeon/PycharmProjects/lydkadb/cambridge.json'
-
+CORPORA_BACKUP_DIR = '/home/simeon/PycharmProjects/lydkadb/data/corpora'
