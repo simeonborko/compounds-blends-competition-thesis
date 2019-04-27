@@ -220,6 +220,7 @@ class Overview(StaticView):
         'nu_modified',
         'nu_graphic',
         'nu_source_language',
+        'nu_number_of_SWs', 'nu_OT', 'nu_TT',
         'wf_process',
         'wfp_specification',
         'wfp_strict_modification',
