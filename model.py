@@ -681,6 +681,7 @@ class NamingUnitTable(Table):
         'nu_graphic', 'first_language', 'survey_language', 'image_id',
         *__FROM_IMG,
         'nu_source_language',
+        'nu_number_of_SWs', 'nu_OT', 'nu_TT',
         'wf_process', 'wfp_specification', 'wfp_strict_modification',
         'connect_element', 'what_connect_element', 'dom_half',
 
@@ -1099,6 +1100,7 @@ class SplinterView(EditableTableLike):
     __NU_FIELDS = (
         'nu_graphic', 'first_language', 'survey_language', 'image_id',
         'nu_source_language',
+        'nu_number_of_SWs', 'nu_OT', 'nu_TT',
         'wf_process', 'wfp_specification',
         'wfp_strict_modification', 'connect_element',
         'nu_word_class', 'nu_phonetic',
