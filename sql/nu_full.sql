@@ -11,7 +11,7 @@ CREATE OR REPLACE VIEW `nu_full` AS
     NU.dom_half as dom_half,
     `NU`.`image_id` AS `image_id`,
     NU.nu_source_language AS nu_source_language,
-    NU.number_of_SWs,
+    NU.nu_number_of_SWs,
     NU.nu_OT,
     NU.nu_TT,
     `NU`.`nu_phonetic` AS `nu_phonetic`,
