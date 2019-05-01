@@ -43,7 +43,11 @@ def download_freq(word: str):
         return None
     word = word.strip()
     page = _get_page(word)
-    return int(_extract(page))
+    freq = _extract(page)
+    if freq is not None:
+        return int(freq)
+    else:
+        return None
 
 
 class EnglishExactCorpus(AbstractCorpus):
