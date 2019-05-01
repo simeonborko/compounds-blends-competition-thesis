@@ -20,6 +20,7 @@ class AbstractCorpus(ABC):
         if self._use_storage:
             self._storage = CorpStorage(self._TABLE_NAME)
             self._storage.load()
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self._use_storage:

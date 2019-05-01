@@ -1,8 +1,7 @@
 import itertools
 
-import configuration as conf
 from tools import Connection
-from tools.sk import Corpus
+from tools.corpora import SlovakExactCorpus, SlovakSubstringCorpus, preload
 
 query = """SELECT
   IF(S.sw1_splinter IS NULL OR S.sw1_splinter = '', S.G_sw1_splinter, S.sw1_splinter) AS splinter_1,
@@ -22,8 +21,7 @@ with Connection() as conn:
     c = conn.cursor()
     c.execute(query)
 
-    all = list(filter(lambda x: x is not None, itertools.chain.from_iterable(c)))
+    all_words = list(filter(lambda x: x is not None, itertools.chain.from_iterable(c)))
 
-with Corpus(conf.CORPUS_FILE) as corp:
-    for word in all:
-        print(word, corp.get_frequency(word), sep='\t')
+preload(SlovakExactCorpus, all_words)
+preload(SlovakSubstringCorpus, all_words)

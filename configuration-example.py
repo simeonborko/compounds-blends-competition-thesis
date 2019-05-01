@@ -20,3 +20,5 @@ TKINTER_TRACEBACK = True
 BACKUP_FILE_FMT = '/tmp/test_{}.xlsx.bak'
 CAMBRIDGE_FILE = '/home/simeon/PycharmProjects/lydkadb/cambridge.json'
 CORPORA_BACKUP_DIR = '/home/simeon/PycharmProjects/lydkadb/data/corpora'
+CORPORA_SLOVAK_SLEEP_TIME_ERROR = 20
+CORPORA_SLOVAK_SLEEP_TIME_PREVENTIVE = 5

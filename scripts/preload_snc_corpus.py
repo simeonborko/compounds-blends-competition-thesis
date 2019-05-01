@@ -1,6 +1,5 @@
-import configuration as conf
 from tools import Connection
-from tools.sk import Corpus
+from tools.corpora import SlovakExactCorpus, preload
 
 with Connection() as conn:
     q = 'SELECT DISTINCT sw_graphic FROM source_word WHERE survey_language = %s'
@@ -9,6 +8,4 @@ with Connection() as conn:
 
     all_words = [r[0] for r in c]
 
-with Corpus(conf.CORPUS_FILE) as corp:
-    for word in all_words:
-        print(word, corp.get_frequency(word))
+preload(SlovakExactCorpus, all_words)

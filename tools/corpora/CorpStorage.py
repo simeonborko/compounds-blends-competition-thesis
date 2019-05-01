@@ -20,7 +20,7 @@ class CorpStorage:
     def load(self):
         with CorpConnection() as conn:
             cur = conn.cursor()
-            cur.execute("SELECT word, freq FROM %s", self._tblname)
+            cur.execute("SELECT word, freq FROM {}".format(self._tblname))
             self._data.update(cur)
 
     def save(self):
@@ -33,10 +33,11 @@ class CorpStorage:
         # noinspection PyBroadException
         try:
 
-            query = "INSERT INTO %s (word, freq) VALUES {}".format(
+            query = "INSERT INTO {} (word, freq) VALUES {}".format(
+                self._tblname,
                 ', '.join('(%s, %s)' for _ in range(len(self._touched)))
             )
-            params: List[Union[str, Optional[int]]] = [self._tblname]
+            params: List[Union[str, Optional[int]]] = []
             for word in self._touched:
                 params.append(word)
                 params.append(self._data[word])
@@ -75,3 +76,7 @@ class CorpStorage:
     def set_many(self, data: DataDict):
         self._data.update(data)
         self._touched.update(data.keys())
+
+    @property
+    def data_keys(self) -> Set[str]:
+        return set(self._data.keys())
