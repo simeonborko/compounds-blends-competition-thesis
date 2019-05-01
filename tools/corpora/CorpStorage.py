@@ -60,7 +60,8 @@ class CorpStorage:
             raise
 
     def __getitem__(self, item):
-        return self._data[item]
+        val = self._data[item]
+        return val if val != -1 else None
 
     def __setitem__(self, key, value):
         self._data[key] = value
@@ -69,13 +70,16 @@ class CorpStorage:
     def __contains__(self, item):
         return item in self._data
 
-    @property
-    def data(self) -> DataDict:
-        return self._data.copy()
+    def set_as_faulty(self, item):
+        self[item] = -1
 
-    def set_many(self, data: DataDict):
-        self._data.update(data)
-        self._touched.update(data.keys())
+    # @property
+    # def data(self) -> DataDict:
+    #     return self._data.copy()
+    #
+    # def set_many(self, data: DataDict):
+    #     self._data.update(data)
+    #     self._touched.update(data.keys())
 
     @property
     def data_keys(self) -> Set[str]:

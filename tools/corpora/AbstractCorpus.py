@@ -1,5 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Optional
+from http.client import RemoteDisconnected
+
+import sys
 
 from tools.corpora import CorpStorage
 
@@ -34,9 +37,16 @@ class AbstractCorpus(ABC):
     def get_frequency(self, word) -> Optional[int]:
         if self._storage is not None and word in self._storage:
             return self._storage[word]
-        freq = self._get_freq(word)
-        if self._storage is not None:
-            self._storage[word] = freq
+        try:
+            freq = self._get_freq(word)
+            if self._storage is not None:
+                self._storage[word] = freq
+        except RemoteDisconnected as e:
+            if self._storage is not None:
+                self._storage.set_as_faulty(word)
+            print(word, e, file=sys.stderr)
+            freq = None
+
         return freq
 
     @property
