@@ -1,4 +1,5 @@
 from io import StringIO
+from typing import Optional
 
 import requests
 from lxml import etree
@@ -26,11 +27,13 @@ def _get_page(query):
     return r.text
 
 
-def _extract(content) -> str:
+def _extract(content) -> Optional[str]:
     parser = etree.HTMLParser()
     tree = etree.parse(StringIO(content), parser)
     root = tree.getroot()
     tbl = root.find('body').find('table')
+    if tbl is None:
+        return None
     cell = tbl[2][1]
     return cell.text.replace(',', '')
 
