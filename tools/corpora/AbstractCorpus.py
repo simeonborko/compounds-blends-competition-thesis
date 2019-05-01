@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Optional
-from http.client import RemoteDisconnected
 
 import sys
+import http.client
 
 from tools.corpora import CorpStorage
 
@@ -41,9 +41,12 @@ class AbstractCorpus(ABC):
             freq = self._get_freq(word)
             if self._storage is not None:
                 self._storage[word] = freq
-        except RemoteDisconnected as e:
+        except http.client.RemoteDisconnected as e:
             if self._storage is not None:
                 self._storage.set_as_faulty(word)
+            print(word, e, file=sys.stderr)
+            freq = None
+        except http.client.HTTPException as e:
             print(word, e, file=sys.stderr)
             freq = None
 
