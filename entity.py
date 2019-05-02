@@ -1,4 +1,5 @@
 from abc import abstractmethod, ABC
+from typing import Optional
 
 import sys
 from syllabiky.syllabiky import split_phrase
@@ -7,6 +8,7 @@ from tools import sk, en
 from tools.exception import WordSegmentException
 from tools.splinter import SlovakGraphicSplinter, SlovakPhoneticSplinter, EnglishGraphicSplinter, \
     EnglishPhoneticSplinter, Overlap
+from tools.corpora import SlovakExactCorpus, SlovakSubstringCorpus, EnglishExactCorpus, EnglishSubstringCorpus
 
 
 class Entity(ABC):
@@ -43,8 +45,8 @@ class Entity(ABC):
 
 class SourceWord(Entity):
 
-    CORPUS = None  # corpus ma nastavit volajuci
-    BNC_CORPUS = None  # ma nastavit volajuci
+    CORPUS: Optional[SlovakExactCorpus] = None  # corpus ma nastavit volajuci
+    BNC_CORPUS: Optional[EnglishExactCorpus] = None  # ma nastavit volajuci
     TRANSCRIPTION_MANAGER = None  # ma nastavit volajuci
     __MATCHER = DbMatcher()
 
@@ -268,8 +270,10 @@ class NamingUnit(Entity):
 class Splinter(Entity):
 
     # korpusy ma nastavit volajuci
-    SLOVAK_CORPUS = None
-    BNC_CORPUS = None
+    SK_EXACT_CORPUS: Optional[SlovakExactCorpus] = None
+    SK_SUBSTRING_CORPUS: Optional[SlovakSubstringCorpus] = None
+    EN_EXACT_CORPUS: Optional[EnglishExactCorpus] = None
+    EN_SUBSTRING_CORPUS: Optional[EnglishSubstringCorpus] = None
 
     def corpus_freq(self):
 
@@ -285,14 +289,16 @@ class Splinter(Entity):
                 spl = self[f'sw{i}_splinter']
                 if not spl:
                     spl = self[f'G_sw{i}_splinter']
-                self[f'sw{i}_splinter_freq_exact'] = self.SLOVAK_CORPUS.get_frequency(spl) if spl else None
+                self[f'sw{i}_splinter_freq_exact'] = self.SK_EXACT_CORPUS.get_frequency(spl) if spl else None
+                self[f'sw{i}_splinter_freq_any'] = self.SK_SUBSTRING_CORPUS.get_frequency(spl) if spl else None
 
         elif self['survey_language'] == 'EN' and self.BNC_CORPUS is not None:
             for i in range(1, 4+1):
                 spl = self[f'sw{i}_splinter']
                 if not spl:
                     spl = self[f'G_sw{i}_splinter']
-                    self[f'sw{i}_splinter_freq_exact'] = self.BNC_CORPUS.get_frequency(spl) if spl else None
+                self[f'sw{i}_splinter_freq_exact'] = self.EN_EXACT_CORPUS.get_frequency(spl) if spl else None
+                self[f'sw{i}_splinter_freq_any'] = self.EN_SUBSTRING_CORPUS.get_frequency(spl) if spl else None
 
     def generate(self):
         graphic = self['type_of_splinter'].startswith('graphic')

@@ -1,23 +1,25 @@
-from abc import ABC, ABCMeta, abstractmethod
+import math
 import sys
+from abc import ABC, ABCMeta, abstractmethod
 from collections import namedtuple
 from contextlib import contextmanager, ExitStack
 from itertools import groupby
 from typing import Iterable, Tuple, List, Set, Dict, Any, Optional
 
-import math
 from cached_property import cached_property
 from openpyxl import Workbook
 from openpyxl.cell import Cell
 from openpyxl.styles import Font, PatternFill
 from openpyxl.worksheet import Worksheet
 from pymysql.cursors import DictCursor
+
 import configuration
+import temp_table
 from entity import SourceWord, NamingUnit, Splinter
 from splinter_view_field_manager import SplinterViewFieldManager
 from tools import sk, en
+from tools.corpora import SlovakExactCorpus, SlovakSubstringCorpus, EnglishExactCorpus, EnglishSubstringCorpus, corpus_context_manager
 from tools.exception import ResponseDuplicatesException, ResponseTypeError
-import temp_table
 
 
 class TableLike(ABC):
@@ -908,26 +910,6 @@ class SourceWordTable(Table):
 
     @staticmethod
     @contextmanager
-    def _sk_corpus_context_manager():
-        with sk.Corpus(configuration.CORPUS_FILE) as corpus:
-            SourceWord.CORPUS = corpus
-            try:
-                yield
-            finally:
-                SourceWord.CORPUS = None
-
-    @staticmethod
-    @contextmanager
-    def _en_corpus_context_manager():
-        with en.BncCorpus(configuration.BNC_CORPUS_FILE, configuration.BNC_CORPUS_NOT_FOUND_LIST_FILE) as bnc_corpus:
-            SourceWord.BNC_CORPUS = bnc_corpus
-            try:
-                yield
-            finally:
-                SourceWord.BNC_CORPUS = None
-
-    @staticmethod
-    @contextmanager
     def _en_transcription_context_manager():
         with en.TranscriptionManager() as trans_man:
             SourceWord.TRANSCRIPTION_MANAGER = trans_man
@@ -941,9 +923,17 @@ class SourceWordTable(Table):
         with ExitStack() as stack:
 
             if kwargs['corpus']:
-                stack.enter_context(self._sk_corpus_context_manager())
+                stack.enter_context(corpus_context_manager(
+                    SlovakExactCorpus,
+                    lambda corpus: SourceWord.CORPUS = corpus,
+                    lambda: SourceWord.CORPUS = None
+                ))
             if kwargs['bnc_corpus']:
-                stack.enter_context(self._en_corpus_context_manager())
+                stack.enter_context(corpus_context_manager(
+                    EnglishExactCorpus,
+                    lambda corpus: SourceWord.BNC_CORPUS = corpus,
+                    lambda: SourceWord.BNC_CORPUS = None
+                ))
             if kwargs['cambridge']:
                 stack.enter_context(self._en_transcription_context_manager())
 
@@ -1036,32 +1026,32 @@ WHERE
             cursor=DictCursor
         ).cursor
 
-    @staticmethod
-    @contextmanager
-    def _sk_corpus_context_manager():
-        with sk.Corpus(configuration.CORPUS_FILE) as corpus:
-            Splinter.SLOVAK_CORPUS = corpus
-            try:
-                yield
-            finally:
-                Splinter.SLOVAK_CORPUS = None
-
-    @staticmethod
-    @contextmanager
-    def _en_corpus_context_manager():
-        with en.BncCorpus(configuration.BNC_CORPUS_FILE, configuration.BNC_CORPUS_NOT_FOUND_LIST_FILE) as bnc_corpus:
-            Splinter.BNC_CORPUS = bnc_corpus
-            try:
-                yield
-            finally:
-                Splinter.BNC_CORPUS = None
-
     def generate(self, force, **kwargs) -> int:
         with ExitStack() as stack:
+
             if kwargs['corpus']:
-                stack.enter_context(self._sk_corpus_context_manager())
+                stack.enter_context(corpus_context_manager(
+                    SlovakExactCorpus,
+                    lambda corpus: Splinter.SK_EXACT_CORPUS = corpus,
+                    lambda: Splinter.SK_EXACT_CORPUS = None
+                ))
+                stack.enter_context(corpus_context_manager(
+                    SlovakSubstringCorpus,
+                    lambda corpus: Splinter.SK_SUBSTRING_CORPUS = corpus,
+                    lambda: Splinter.SK_SUBSTRING_CORPUS = None
+                ))
+
             if kwargs['bnc_corpus']:
-                stack.enter_context(self._en_corpus_context_manager())
+                stack.enter_context(corpus_context_manager(
+                    EnglishExactCorpus,
+                    lambda corpus: Splinter.EN_EXACT_CORPUS = corpus,
+                    lambda: Splinter.EN_EXACT_CORPUS = None
+                ))
+                stack.enter_context(corpus_context_manager(
+                    EnglishSubstringCorpus,
+                    lambda corpus: Splinter.EN_SUBSTRING_CORPUS = corpus,
+                    lambda: Splinter.EN_SUBSTRING_CORPUS = None
+                ))
 
             # Splinter dat je mnoho, stavalo sa, ze MySQL server sa odpojil
             # Preto sme zaviedli spracovanie po strankach, aby sme viac komunikovali so serverom a necitil sa osamelo
