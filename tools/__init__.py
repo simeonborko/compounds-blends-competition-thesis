@@ -1,2 +1,2 @@
-from .tools import Connection
+from .tools import Connection, CorpConnection
 from .splinter import splinter
