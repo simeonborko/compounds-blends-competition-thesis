@@ -924,15 +924,11 @@ class SourceWordTable(Table):
 
             if kwargs['corpus']:
                 stack.enter_context(corpus_context_manager(
-                    SlovakExactCorpus,
-                    lambda corpus: SourceWord.CORPUS = corpus,
-                    lambda: SourceWord.CORPUS = None
+                    SlovakExactCorpus, SourceWord, 'CORPUS'
                 ))
             if kwargs['bnc_corpus']:
                 stack.enter_context(corpus_context_manager(
-                    EnglishExactCorpus,
-                    lambda corpus: SourceWord.BNC_CORPUS = corpus,
-                    lambda: SourceWord.BNC_CORPUS = None
+                    EnglishExactCorpus, SourceWord, 'BNC_CORPUS'
                 ))
             if kwargs['cambridge']:
                 stack.enter_context(self._en_transcription_context_manager())
@@ -1031,26 +1027,18 @@ WHERE
 
             if kwargs['corpus']:
                 stack.enter_context(corpus_context_manager(
-                    SlovakExactCorpus,
-                    lambda corpus: Splinter.SK_EXACT_CORPUS = corpus,
-                    lambda: Splinter.SK_EXACT_CORPUS = None
+                    SlovakExactCorpus, Splinter, 'SK_EXACT_CORPUS'
                 ))
                 stack.enter_context(corpus_context_manager(
-                    SlovakSubstringCorpus,
-                    lambda corpus: Splinter.SK_SUBSTRING_CORPUS = corpus,
-                    lambda: Splinter.SK_SUBSTRING_CORPUS = None
+                    SlovakSubstringCorpus, Splinter, 'SK_SUBSTRING_CORPUS'
                 ))
 
             if kwargs['bnc_corpus']:
                 stack.enter_context(corpus_context_manager(
-                    EnglishExactCorpus,
-                    lambda corpus: Splinter.EN_EXACT_CORPUS = corpus,
-                    lambda: Splinter.EN_EXACT_CORPUS = None
+                    EnglishExactCorpus, Splinter, 'EN_EXACT_CORPUS'
                 ))
                 stack.enter_context(corpus_context_manager(
-                    EnglishSubstringCorpus,
-                    lambda corpus: Splinter.EN_SUBSTRING_CORPUS = corpus,
-                    lambda: Splinter.EN_SUBSTRING_CORPUS = None
+                    EnglishSubstringCorpus, Splinter, 'EN_SUBSTRING_CORPUS'
                 ))
 
             # Splinter dat je mnoho, stavalo sa, ze MySQL server sa odpojil

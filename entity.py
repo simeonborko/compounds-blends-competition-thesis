@@ -284,21 +284,29 @@ class Splinter(Entity):
         if self['type_of_splinter'].startswith('graphic') is False:
             return
 
-        if self['survey_language'] == 'SK' and self.SLOVAK_CORPUS is not None:
+        if self['survey_language'] == 'SK' and (self.SK_EXACT_CORPUS or self.SK_SUBSTRING_CORPUS):
             for i in range(1, 4+1):
                 spl = self[f'sw{i}_splinter']
                 if not spl:
                     spl = self[f'G_sw{i}_splinter']
-                self[f'sw{i}_splinter_freq_exact'] = self.SK_EXACT_CORPUS.get_frequency(spl) if spl else None
-                self[f'sw{i}_splinter_freq_any'] = self.SK_SUBSTRING_CORPUS.get_frequency(spl) if spl else None
+                if not spl:
+                    continue
+                if self.SK_EXACT_CORPUS:
+                    self[f'sw{i}_splinter_freq_exact'] = self.SK_EXACT_CORPUS.get_frequency(spl) if spl else None
+                if self.SK_SUBSTRING_CORPUS:
+                    self[f'sw{i}_splinter_freq_any'] = self.SK_SUBSTRING_CORPUS.get_frequency(spl) if spl else None
 
-        elif self['survey_language'] == 'EN' and self.BNC_CORPUS is not None:
+        elif self['survey_language'] == 'EN' and (self.EN_EXACT_CORPUS or self.EN_SUBSTRING_CORPUS):
             for i in range(1, 4+1):
                 spl = self[f'sw{i}_splinter']
                 if not spl:
                     spl = self[f'G_sw{i}_splinter']
-                self[f'sw{i}_splinter_freq_exact'] = self.EN_EXACT_CORPUS.get_frequency(spl) if spl else None
-                self[f'sw{i}_splinter_freq_any'] = self.EN_SUBSTRING_CORPUS.get_frequency(spl) if spl else None
+                if not spl:
+                    continue
+                if self.EN_EXACT_CORPUS:
+                    self[f'sw{i}_splinter_freq_exact'] = self.EN_EXACT_CORPUS.get_frequency(spl) if spl else None
+                if self.EN_SUBSTRING_CORPUS:
+                    self[f'sw{i}_splinter_freq_any'] = self.EN_SUBSTRING_CORPUS.get_frequency(spl) if spl else None
 
     def generate(self):
         graphic = self['type_of_splinter'].startswith('graphic')
