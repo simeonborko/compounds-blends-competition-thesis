@@ -7,7 +7,7 @@ from syllabiky.DbMatcher import DbMatcher
 from tools import sk, en
 from tools.exception import WordSegmentException
 from tools.splinter import SlovakGraphicSplinter, SlovakPhoneticSplinter, EnglishGraphicSplinter, \
-    EnglishPhoneticSplinter, Overlap
+    EnglishPhoneticSplinter, Overlap, LexshType, parse_lexsh_type
 from tools.corpora import SlovakExactCorpus, SlovakSubstringCorpus, EnglishExactCorpus, EnglishSubstringCorpus
 
 
@@ -27,6 +27,13 @@ class Entity(ABC):
         if self.__data[key] != value:
             self.__data[key] = value
             self.__modified = True
+
+    def get_generated(self, item):
+        """Ak je item aj generovany aj editovatelny, tak primarne vrati editovatelny, inak generovany"""
+        res = self[item]
+        if not res:
+            res = self[f'G_{item}']
+        return res
 
     @property
     def data(self) -> dict:
@@ -154,21 +161,6 @@ class NamingUnit(Entity):
             newval = en.count_syllables(self['nu_phonetic'])
         self['G_nu_syllabic_len'] = newval
 
-    # def __n_of_overlapping_letters(self):
-    #     pass
-    #
-    # def __n_of_overlapping_phones(self):
-    #     pass
-    #
-    # def __split_point_1(self):
-    #     pass
-    #
-    # def __split_point_2(self):
-    #     pass
-    #
-    # def __split_point_3(self):
-    #     pass
-
     def __lexsh(self):
 
         cls = SlovakGraphicSplinter if self.__lang == 'SK' else EnglishGraphicSplinter
@@ -258,12 +250,35 @@ class NamingUnit(Entity):
             self.__overlap_segments(EnglishGraphicSplinter, True)
             self.__overlap_segments(EnglishPhoneticSplinter, False)
 
+    def __get_lexsh_type(self, sw_number) -> Optional[LexshType]:
+        lexsh = self.get_generated('lexsh_main')
+        return parse_lexsh_type(lexsh, sw_number) if lexsh else None
+
     def __split_point_placement(self):
         # vyzaduje, aby bolo predtym spustene __lexsh()
-        pass
-        # if not self['G_lexsh_main']:
-        #     return
-        # shortenings = self['G_lexsh_main'].split('+')
+
+        if self.__lang == 'SK':
+            for N in (1, 2, 3):
+                res = None
+                syll = self.get_generated('nu_syllabic')
+                if self['nu_graphic'] and syll and self[f'sw{N}_graphic'] and self[f'gs_sw{N}_splinter']:
+                    s = SlovakGraphicSplinter(self['nu_graphic'], self[f'sw{N}_graphic'], True)
+                    if s.set_splinter(self[f'gs_sw{N}_splinter']):
+                        lexsh_type = self.__get_lexsh_type(N)
+                        if lexsh_type is not None and s.lexical_shortening == lexsh_type:
+                            res = s.get_split_point(syll)
+                self[f'G_split_point_{N}'] = res
+
+        elif self.__lang == 'EN':
+            for N in (1, 2, 3):
+                res = None
+                if self['nu_phonetic'] and self[f'sw{N}_phonetic'] and self[f'ps_sw{N}_splinter']:
+                    s = EnglishPhoneticSplinter(self['nu_phonetic'], self[f'sw{N}_phonetic'], True)
+                    if s.set_splinter(self[f'ps_sw{N}_splinter']):
+                        lexsh_type = self.__get_lexsh_type(N)
+                        if lexsh_type is not None and s.lexical_shortening == lexsh_type:
+                            res = s.get_split_point(self['nu_phonetic'])
+                self[f'G_split_point_{N}'] = res
 
     def generate(self):
         self.__nu_syllabic()
@@ -272,6 +287,7 @@ class NamingUnit(Entity):
         self.__nu_syllabic_len()
         self.__lexsh()
         self.__overlap()
+        self.__split_point_placement()
 
 
 class Splinter(Entity):

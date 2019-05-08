@@ -14,6 +14,24 @@ class LexshType(Enum):
     RSLS = auto()
 
 
+def parse_lexsh_type(lexsh: str, sw_number: int) -> Optional[LexshType]:
+    """
+    :param lexsh: Retazec na parsovanie, jednotlive lexical shortening su oddelene +
+    :param sw_number: Cislo zdrojoveho slova, zacina od 1.
+    :return: LexshType alebo None
+    """
+    if not lexsh:
+        return None
+    lst = lexsh.split('+')
+    if (sw_number - 1) >= len(lst):
+        return None
+    one_lexsh = lst[sw_number - 1]
+    for enum_entry in LexshType:
+        if one_lexsh == enum_entry.name:
+            return enum_entry
+    return None
+
+
 class SplitPointType(Enum):
     NUCL_CODA = auto()   # samohlaska - spoluhlaska
     SYLLABLE = auto()
