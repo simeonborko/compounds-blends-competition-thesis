@@ -2,7 +2,6 @@ from abc import ABCMeta, abstractmethod
 from enum import Enum, auto
 from typing import Optional, Sequence, List, Callable
 
-import itertools
 from unidecode import unidecode
 
 from tools import sk, en
