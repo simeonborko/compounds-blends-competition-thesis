@@ -37,6 +37,16 @@ class SplitPointType(Enum):
     SYLLABLE = auto()
     ONSET_NUCL = auto()  # spoluhlaska - samohlaska
 
+    def __str__(self):
+        if self == SplitPointType.NUCL_CODA:
+            return 'nucleus-coda'
+        elif self == SplitPointType.SYLLABLE:
+            return 'syllable'
+        elif self == SplitPointType.ONSET_NUCL:
+            return 'onset-nucleus'
+        else:
+            return super().__str__()
+
 
 class Alignment:
 

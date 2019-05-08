@@ -265,7 +265,9 @@ class NamingUnit(Entity):
                     if s.set_splinter(self[f'gs_sw{N}_splinter']):
                         lexsh_type = self.__get_lexsh_type(N)
                         if lexsh_type is not None and s.lexical_shortening == lexsh_type:
-                            res = s.get_split_point(self[f'sw{N}_syllabic'])
+                            sp = s.get_split_point(self[f'sw{N}_syllabic'])
+                            if sp is not None:
+                                res = str(sp)
                 self[f'G_split_point_{N}'] = res
 
         elif self.__lang == 'EN':
@@ -276,7 +278,9 @@ class NamingUnit(Entity):
                     if s.set_splinter(self[f'ps_sw{N}_splinter']):
                         lexsh_type = self.__get_lexsh_type(N)
                         if lexsh_type is not None and s.lexical_shortening == lexsh_type:
-                            res = s.get_split_point(self[f'sw{N}_phonetic'])
+                            sp = s.get_split_point(self[f'sw{N}_phonetic'])
+                            if sp is not None:
+                                res = str(sp)
                 self[f'G_split_point_{N}'] = res
 
     def generate(self):
