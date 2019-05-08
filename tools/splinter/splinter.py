@@ -231,17 +231,17 @@ class SlovakGraphicSplinter(GraphicSplinter):
         else:
             return None
 
-    def get_split_point(self, syllables: str) -> Optional[SplitPointType]:
+    def get_split_point(self, sw_syllabic: str) -> Optional[SplitPointType]:
         """
         syllables je string, slabiky su oddelene pomlckami (-)
         """
 
-        if not syllables:
+        if not sw_syllabic:
             return None
 
         # chyz-ka => 0 0 0 1 1
         # sla-bi-ky => 0 0 0 1 1 2 2
-        map_letter_to_syll = sk.get_map_letter_to_syll(syllables)
+        map_letter_to_syll = sk.get_map_letter_to_syll(sw_syllabic)
 
         lexsh = self.lexical_shortening
         rng = self.alignment.sw_range
@@ -250,7 +250,7 @@ class SlovakGraphicSplinter(GraphicSplinter):
             return self.__analyze_split_point_pair(rng.stop - 1, rng.stop, map_letter_to_syll)
 
         elif lexsh == LexshType.LS:
-            return self.__analyze_split_point_pair(rng.start, rng.start + 1, map_letter_to_syll)
+            return self.__analyze_split_point_pair(rng.start - 1, rng.start, map_letter_to_syll)
 
         else:
             return None
@@ -305,12 +305,12 @@ class EnglishPhoneticSplinter(PhoneticSplinter):
         else:
             return None
 
-    def get_split_point(self, nu_phonetic: str) -> Optional[SplitPointType]:
+    def get_split_point(self, sw_phonetic: str) -> Optional[SplitPointType]:
 
-        if not nu_phonetic:
+        if not sw_phonetic:
             return None
 
-        map_phone_to_syll = en.get_map_phone_to_syll(nu_phonetic)
+        map_phone_to_syll = en.get_map_phone_to_syll(sw_phonetic)
 
         lexsh = self.lexical_shortening
         rng = self.alignment.sw_range
@@ -319,7 +319,7 @@ class EnglishPhoneticSplinter(PhoneticSplinter):
             return self.__analyze_split_point_pair(rng.stop - 1, rng.stop, map_phone_to_syll)
 
         elif lexsh == LexshType.LS:
-            return self.__analyze_split_point_pair(rng.start, rng.start + 1, map_phone_to_syll)
+            return self.__analyze_split_point_pair(rng.start - 1, rng.start, map_phone_to_syll)
 
         else:
             return None

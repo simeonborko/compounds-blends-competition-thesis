@@ -745,7 +745,12 @@ class NamingUnitTable(Table):
     IF(SW1.sw_phonetic IS NULL OR SW1.sw_phonetic = '', SW1.G_sw_phonetic, SW1.sw_phonetic) AS sw1_phonetic,
     IF(SW2.sw_phonetic IS NULL OR SW2.sw_phonetic = '', SW2.G_sw_phonetic, SW2.sw_phonetic) AS sw2_phonetic,
     IF(SW3.sw_phonetic IS NULL OR SW3.sw_phonetic = '', SW3.G_sw_phonetic, SW3.sw_phonetic) AS sw3_phonetic,
-    IF(SW4.sw_phonetic IS NULL OR SW4.sw_phonetic = '', SW4.G_sw_phonetic, SW4.sw_phonetic) AS sw4_phonetic
+    IF(SW4.sw_phonetic IS NULL OR SW4.sw_phonetic = '', SW4.G_sw_phonetic, SW4.sw_phonetic) AS sw4_phonetic,
+    
+    IF(SW1.sw_syllabic IS NULL OR SW1.sw_syllabic = '', SW1.G_sw_syllabic, SW1.sw_syllabic) AS sw1_syllabic,
+    IF(SW2.sw_syllabic IS NULL OR SW2.sw_syllabic = '', SW2.G_sw_syllabic, SW2.sw_syllabic) AS sw2_syllabic,
+    IF(SW3.sw_syllabic IS NULL OR SW3.sw_syllabic = '', SW3.G_sw_syllabic, SW3.sw_syllabic) AS sw3_syllabic,
+    IF(SW4.sw_syllabic IS NULL OR SW4.sw_syllabic = '', SW4.G_sw_syllabic, SW4.sw_syllabic) AS sw4_syllabic
     
     FROM naming_unit NU
     

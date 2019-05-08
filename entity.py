@@ -260,13 +260,12 @@ class NamingUnit(Entity):
         if self.__lang == 'SK':
             for N in (1, 2, 3):
                 res = None
-                syll = self.get_generated('nu_syllabic')
-                if self['nu_graphic'] and syll and self[f'sw{N}_graphic'] and self[f'gs_sw{N}_splinter']:
+                if self['nu_graphic'] and self[f'sw{N}_graphic'] and self[f'sw{N}_syllabic'] and self[f'gs_sw{N}_splinter']:
                     s = SlovakGraphicSplinter(self['nu_graphic'], self[f'sw{N}_graphic'], True)
                     if s.set_splinter(self[f'gs_sw{N}_splinter']):
                         lexsh_type = self.__get_lexsh_type(N)
                         if lexsh_type is not None and s.lexical_shortening == lexsh_type:
-                            res = s.get_split_point(syll)
+                            res = s.get_split_point(self[f'sw{N}_syllabic'])
                 self[f'G_split_point_{N}'] = res
 
         elif self.__lang == 'EN':
@@ -277,7 +276,7 @@ class NamingUnit(Entity):
                     if s.set_splinter(self[f'ps_sw{N}_splinter']):
                         lexsh_type = self.__get_lexsh_type(N)
                         if lexsh_type is not None and s.lexical_shortening == lexsh_type:
-                            res = s.get_split_point(self['nu_phonetic'])
+                            res = s.get_split_point(self[f'sw{N}_phonetic'])
                 self[f'G_split_point_{N}'] = res
 
     def generate(self):
