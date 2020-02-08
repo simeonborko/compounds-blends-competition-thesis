@@ -246,6 +246,14 @@ class Overview(StaticView):
         'sw2_word_class',
         'sw3_word_class',
         'sw4_word_class',
+        'sw1_established_derived',
+        'sw2_established_derived',
+        'sw3_established_derived',
+        'sw4_established_derived',
+        'sw1_structure',
+        'sw2_structure',
+        'sw3_structure',
+        'sw4_structure',
         'sw1_source_language',
         'sw2_source_language',
         'sw3_source_language',
@@ -890,6 +898,7 @@ class SourceWordTable(Table):
     _NAME = 'source_word'
     _FIELDS = ('sw_graphic', 'first_language', 'survey_language',
                'source_language', 'proper_name', 'sw_phonetic', 'G_sw_phonetic', 'sw_word_class',
+               'established_derived', 'structure',
                'sw_syllabic', 'G_sw_syllabic', 'G_sw_syllabic__ignore',
                'sw_graphic_len', 'G_sw_graphic_len',
                'sw_phonetic_len', 'G_sw_phonetic_len',
@@ -1120,7 +1129,9 @@ class SplinterView(EditableTableLike):
     # ktore stlpce zo source_word maju byt pri kazdom zdrojovom slove
     __SW_FIELDS = (
         'sw_graphic', 'source_language',
-        'sw_phonetic', 'sw_word_class', 'sw_syllabic',
+        'sw_phonetic', 'sw_word_class',
+        'established_derived', 'structure',
+        'sw_syllabic',
         'sw_graphic_len', 'sw_phonetic_len', 'sw_syllabic_len',
     )
 
