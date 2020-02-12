@@ -35,10 +35,18 @@ class AbstractCorpus(ABC):
         pass
 
     def get_frequency(self, word) -> Optional[int]:
+        """
+        Ziskaj frekvenciu pre zadany vyraz.
+        :param word: vyraz na vyhladanie v korpuse
+        :return: frekvencia (int), alebo 0 ak sa vyraz nenasiel, alebo None v pripade chyby
+        """
         if self._storage is not None and word in self._storage:
-            return self._storage[word]
+            freq = self._storage[word]
+            return freq if freq is not None else 0
         try:
             freq = self._get_freq(word)
+            if freq is None:
+                freq = 0
             if self._storage is not None:
                 self._storage[word] = freq
         except http.client.RemoteDisconnected as e:
