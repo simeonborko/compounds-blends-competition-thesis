@@ -4,12 +4,12 @@ from urllib.error import HTTPError
 from urllib.parse import quote
 from urllib.request import urlopen
 
+from pyquery import PyQuery
 from unidecode import unidecode
 
 import configuration
 from tools import CambridgeConnection
 from tools.storage import DatabaseStorage
-from .CambridgeParser import CambridgeParser
 
 
 class TranscriptionManager:
@@ -36,20 +36,28 @@ class TranscriptionManager:
     @classmethod
     def download(cls, query: str) -> Optional[str]:
         """Stiahne z webu foneticky prepis query. Vracia foneticky prepis alebo None"""
-        url = cls.URL + quote(query.lower())
+        query = query.lower()
+        url = cls.URL + quote(query)
         response = urlopen(url)
         if url != response.url:
-            print('Request url {} nie je rovnaka ako response url {}'.format(url, response.url), file=sys.stderr)
+            # print('Request url {} nie je rovnaka ako response url {}'.format(url, response.url), file=sys.stderr)
             return None
         body = response.read().decode('utf-8')
 
-        parser = CambridgeParser()
-        parser.feed(body)
+        pq = PyQuery(body)
 
-        if len(parser.text) > 0:
-            return parser.text
-        else:
-            return None
+        entries = pq(".pr.entry-body__el")
+        for entry in entries.items():
+            # priklad: ak zadas billed, su tam dva zaznamy: billed, bill
+            if entry.find('.headword .hw.dhw').text().lower() != query:
+                continue
+            ipa = entry.find('.ipa')
+            if len(ipa) == 0:
+                continue
+            # 0 je UK, 1 je US
+            return ipa.eq(0).text()
+
+        return None
 
     def __getitem__(self, item: str) -> Optional[str]:
 
