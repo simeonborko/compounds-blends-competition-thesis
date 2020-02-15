@@ -9,13 +9,18 @@ CORP_PORT = PORT
 CORP_USER = CORP_DB = 'corpus'
 CORP_PASSWD = PASSWD
 
+CAMBRIDGE_HOST = HOST
+CAMBRIDGE_PORT = PORT
+CAMBRIDGE_USER = CAMBRIDGE_DB = 'cambridge'
+CAMBRIDGE_PASSWD = PASSWD
+
 SYNC_OVERVIEW = False
 
 XLSX_FILE = '/tmp/test.xlsx'
 CHECKBOX_FILE = '/tmp/test.json'
 TKINTER_TRACEBACK = True
 BACKUP_FILE_FMT = '/tmp/test_{}.xlsx.bak'
-CAMBRIDGE_FILE = '/home/simeon/PycharmProjects/lydkadb/cambridge.json'
+CAMBRIDGE_BACKUP_DIR = '/home/simeon/PycharmProjects/lydkadb/data/cambridge'
 CORPORA_BACKUP_DIR = '/home/simeon/PycharmProjects/lydkadb/data/corpora'
 CORPORA_SLOVAK_SLEEP_TIME_ERROR = 20
 CORPORA_SLOVAK_SLEEP_TIME_PREVENTIVE = 5

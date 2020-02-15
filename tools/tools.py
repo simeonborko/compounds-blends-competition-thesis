@@ -50,6 +50,28 @@ class CorpConnection:
         self.conn.close()
 
 
+class CambridgeConnection:
+
+    def __enter__(self):
+
+        conv = dict(pymysql.converters.conversions)
+        conv[FIELD_TYPE.DECIMAL] = float
+        conv[FIELD_TYPE.NEWDECIMAL] = float
+
+        self.conn = pymysql.connect(
+            host=c.CAMBRIDGE_HOST,
+            port=c.CAMBRIDGE_PORT,
+            user=c.CAMBRIDGE_USER,
+            password=c.CAMBRIDGE_PASSWD,
+            database=c.CAMBRIDGE_DB,
+            conv=conv,
+        )
+        return self.conn
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.conn.close()
+
+
 def tsv_reader(fp):
     cr = csv.reader(fp, delimiter='\t')
     return map(lambda row: [c.strip() if len(c.strip()) > 0 else None for c in row], cr)

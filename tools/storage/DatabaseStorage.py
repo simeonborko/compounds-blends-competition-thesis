@@ -1,26 +1,25 @@
 import json
-from pathlib import Path
-from typing import Dict, Set, List, Union, Optional
 from datetime import datetime
-
-import configuration as conf
-from tools import CorpConnection
-
-
-DataDict = Dict[str, Optional[int]]
+from pathlib import Path
+from typing import Set, List, Union, Optional
 
 
-class CorpStorage:
+class DatabaseStorage:
 
-    def __init__(self, tblname: str):
+    def __init__(self, tblname: str, key_field: str, value_field: str, backup_dir: str, connection_cls, faulty_value):
         self._tblname = tblname
-        self._data: DataDict = {}
+        self._key_field = key_field
+        self._value_field = value_field
+        self._backup_dir = backup_dir
+        self._connection_cls = connection_cls
+        self._faulty_value = faulty_value
+        self._data: dict = {}
         self._touched: Set[str] = set()
 
     def load(self):
-        with CorpConnection() as conn:
+        with self._connection_cls() as conn:
             cur = conn.cursor()
-            cur.execute("SELECT word, freq FROM {}".format(self._tblname))
+            cur.execute("SELECT {}, {} FROM {}".format(self._key_field, self._value_field, self._tblname))
             self._data.update(cur)
 
     def save(self):
@@ -33,8 +32,9 @@ class CorpStorage:
         # noinspection PyBroadException
         try:
 
-            query = "INSERT INTO {} (word, freq) VALUES {}".format(
+            query = "INSERT INTO {} ({}, {}) VALUES {}".format(
                 self._tblname,
+                self._key_field, self._value_field,
                 ', '.join('(%s, %s)' for _ in range(len(self._touched)))
             )
             params: List[Union[str, Optional[int]]] = []
@@ -42,13 +42,14 @@ class CorpStorage:
                 params.append(word)
                 params.append(self._data[word])
 
-            with CorpConnection() as conn:
+            with self._connection_cls() as conn:
                 cur = conn.cursor()
                 cur.execute(query, params)
                 conn.commit()
 
         except Exception:
-            dirpath = Path(conf.CORPORA_BACKUP_DIR)
+            dirpath = Path(self._backup_dir)
+            dirpath.mkdir(parents=True, exist_ok=True)
             filepath = dirpath / '{}-{}.json'.format(
                 datetime.now().strftime('%Y_%m_%d-%H_%M_%S'),
                 str(self._tblname)
@@ -61,7 +62,7 @@ class CorpStorage:
 
     def __getitem__(self, item):
         val = self._data[item]
-        return val if val != -1 else None
+        return val if val != self._faulty_value else None
 
     def __setitem__(self, key, value):
         self._data[key] = value
@@ -71,15 +72,7 @@ class CorpStorage:
         return item in self._data
 
     def set_as_faulty(self, item):
-        self[item] = -1
-
-    # @property
-    # def data(self) -> DataDict:
-    #     return self._data.copy()
-    #
-    # def set_many(self, data: DataDict):
-    #     self._data.update(data)
-    #     self._touched.update(data.keys())
+        self[item] = self._faulty_value
 
     @property
     def data_keys(self) -> Set[str]:

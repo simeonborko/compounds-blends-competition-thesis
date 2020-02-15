@@ -1,27 +1,34 @@
+import http.client
+import sys
 from abc import ABC, abstractmethod
 from typing import Optional
 
-import sys
-import http.client
-
-from tools.corpora import CorpStorage
+import configuration
+from tools import CorpConnection
+from tools.storage import DatabaseStorage
 
 
 class AbstractCorpus(ABC):
 
     _TABLE_NAME = None
 
-    def __init__(self, use_storage: bool=True):
+    def __init__(self, use_storage: bool = True):
 
         if type(self._TABLE_NAME) is not str:
             raise Exception
 
         self._use_storage: bool = use_storage
-        self._storage: Optional[CorpStorage] = None
+        self._storage: Optional[DatabaseStorage] = None
 
     def __enter__(self):
         if self._use_storage:
-            self._storage = CorpStorage(self._TABLE_NAME)
+            self._storage = DatabaseStorage(
+                self._TABLE_NAME,
+                'word', 'freq',
+                configuration.CORPORA_BACKUP_DIR,
+                CorpConnection,
+                -1
+            )
             self._storage.load()
         return self
 
@@ -61,5 +68,5 @@ class AbstractCorpus(ABC):
         return freq
 
     @property
-    def storage(self) -> Optional[CorpStorage]:
+    def storage(self) -> Optional[DatabaseStorage]:
         return self._storage
