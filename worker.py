@@ -46,6 +46,10 @@ class Disabler:
             checker.configure(state=DISABLED)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        # ak je vynimka, otvorit okienko s chybou
+        if exc_type is not None:
+            messagebox.showerror('Chyba', exc_type.__name__)
+
         for button in self.__buttons:
             button.configure(state=NORMAL)
         for checker in self.__checkers:
