@@ -1,6 +1,8 @@
 import json
 from html.parser import HTMLParser
 from typing import Optional
+from urllib.error import HTTPError
+from urllib.parse import quote
 from urllib.request import urlopen
 
 from os.path import isfile
@@ -61,15 +63,20 @@ class TranscriptionManager:
     @classmethod
     def download(cls, query: str) -> Optional[str]:
         """Stiahne z webu foneticky prepis query. Vracia foneticky prepis alebo None"""
-        response = urlopen(cls.URL + query)
-        body = response.read().decode('utf-8')
+        try:
+            response = urlopen(cls.URL + quote(query))
+            body = response.read().decode('utf-8')
 
-        parser = CambridgeParser()
-        parser.feed(body)
+            parser = CambridgeParser()
+            parser.feed(body)
 
-        if len(parser.text) > 0:
-            return parser.text
-        else:
+            if len(parser.text) > 0:
+                return parser.text
+            else:
+                return None
+
+        except HTTPError as e:
+            print('HTTPError while downloading from Cambridge for word', query, e)
             return None
 
     def __getitem__(self, item: str) -> Optional[str]:
