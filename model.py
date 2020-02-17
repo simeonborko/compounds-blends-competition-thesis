@@ -439,7 +439,8 @@ class EditableTableLike(TableLike):
         :return:
         """
 
-        print('Entering _sync', self._as_affected)
+        if configuration.DEBUG:
+            print('Entering _sync', self._as_affected)
 
         # ako v dosledku, ze nieco ine bolo zmenene, takze vsetko treba zmenit v harku
         if self._as_affected:
@@ -460,7 +461,8 @@ class EditableTableLike(TableLike):
                 if self._update_in_sheet(db_values, sheet_cells, self.__generated):
                     self._modified = True
 
-        print('Leaving _sync')
+        if configuration.DEBUG:
+            print('Leaving _sync')
 
         return self._modified
 
@@ -549,7 +551,8 @@ class Table(EditableTableLike, metaclass=ABCMeta):
             if entity.modified:
                 args.append(entity.data)
 
-        print('args', args)
+        if configuration.DEBUG:
+            print('args', args)
 
         if len(args):
 
@@ -562,7 +565,8 @@ class Table(EditableTableLike, metaclass=ABCMeta):
             affected = self._executemany(query, args).result
 
             if len(args) != affected:
-                print("Pocet args: {}, pocet affected: {}".format(len(args), affected), file=sys.stderr)
+                if configuration.DEBUG:
+                    print("Pocet args: {}, pocet affected: {}".format(len(args), affected), file=sys.stderr)
                 affected = affected or 0
 
             return affected
@@ -1062,7 +1066,8 @@ WHERE
             # funkcia _generate vola funkciu _generate_get_executed_cursor
             s = 0
             pages = math.ceil(self._execute("SELECT COUNT(*) FROM splinter").cursor.fetchone()[0] / self.__ROWS_PER_PAGE)
-            print('Splinter, pages:', pages)
+            if configuration.DEBUG:
+                print('Splinter, pages:', pages)
             for i in range(pages):
                 s += self._generate(force, Splinter, page=i)
 

@@ -49,7 +49,8 @@ class SyncManager:
                     continue
                 else:
                     modified = obj.sync(unhighlight)
-                    print('Modified:', 'YES' if modified else 'NO')
+                    if configuration.DEBUG:
+                        print('Modified:', 'YES' if modified else 'NO')
                     if modified:
                         self.__modified.append(obj.__class__)
                         potential = list(self.__RULES[obj.__class__])
