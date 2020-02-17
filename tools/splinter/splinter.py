@@ -1,3 +1,4 @@
+import sys
 from abc import ABCMeta, abstractmethod
 from enum import Enum, auto
 from typing import Optional, Sequence, List, Callable
@@ -223,9 +224,13 @@ class SlovakGraphicSplinter(GraphicSplinter):
 
     def __analyze_split_point_pair(self, sw_a_idx: int, sw_b_idx: int, map_letter_to_syll: List[int]) -> Optional[SplitPointType]:
 
-        if map_letter_to_syll[sw_a_idx] != map_letter_to_syll[sw_b_idx]:
-            # su v roznych slabikach
-            return SplitPointType.SYLLABLE
+        try:
+            if map_letter_to_syll[sw_a_idx] != map_letter_to_syll[sw_b_idx]:
+                # su v roznych slabikach
+                return SplitPointType.SYLLABLE
+        except IndexError as e:
+            print('Suppressed error in __analyze_split_point_pair', map_letter_to_syll, sw_a_idx, sw_b_idx, e, file=sys.stderr)
+            return None
 
         a_type = sk.Letters.get_type(self._sourceword[sw_a_idx])
         b_type = sk.Letters.get_type(self._sourceword[sw_b_idx])
