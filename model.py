@@ -53,11 +53,15 @@ class TableLike(ABC):
         return range(self._PRIMARY)
 
     def _execute(self, *args, **kwargs) -> ExecuteResult:
+        self.__conn.ping(True)
+        print("pinged")
         c = self.__conn.cursor(**kwargs)
         res = c.execute(*args) or 0
         return self.ExecuteResult(c, res)
 
     def _executemany(self, *args, **kwargs) -> ExecuteResult:
+        self.__conn.ping(True)
+        print("pinged")
         c = self.__conn.cursor(**kwargs)
         res = c.executemany(*args) or 0
         return self.ExecuteResult(c, res)
