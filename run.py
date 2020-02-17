@@ -157,16 +157,27 @@ with VarManager(configuration.CHECKBOX_FILE) as varmanager:
     # generate
     vg = varmanager.group(Group.GEN)
     for i, cls in enumerate(GEN_CLSS):
-        Checkbutton(generateLeftFrame, text=cls.name(), variable=vg.var()).grid(row=i, sticky=W, padx=(0, 30), pady=2)
+        if cls is NamingUnitTable:
+            naming_unit_var: IntVar = vg.var()
+            naming_unit_var.set(0)
+            checkercls(generateLeftFrame, text=cls.name(), variable=naming_unit_var, state=DISABLED).grid(row=i, sticky=W, padx=(0, 30), pady=2)
+        else:
+            Checkbutton(generateLeftFrame, text=cls.name(), variable=vg.var()).grid(row=i, sticky=W, padx=(0, 30), pady=2)
     Button(generateRightFrame, text='Vyplniť automatizovane', command=generate).grid(padx=10, pady=10, row=0, column=0, rowspan=4)
     vg = varmanager.group(Group.OPTIONS)
 
+    # aj uz vyplnene natvrdo zapnute
     already_filled: IntVar = vg.var()
     already_filled.set(1)
-    Checkbutton(generateRightFrame, text='Aj už vyplnené', variable=already_filled, state=DISABLED).grid(row=0, column=1, sticky=W)
+    checkercls(generateRightFrame, text='Aj už vyplnené', variable=already_filled, state=DISABLED).grid(row=0, column=1, sticky=W)
 
     Checkbutton(generateRightFrame, text='Korpus', variable=vg.var()).grid(row=1, column=1, sticky=W)
-    Checkbutton(generateRightFrame, text='BNC Corpus', variable=vg.var()).grid(row=2, column=1, sticky=W)
+
+    # bnc corpus natvrdo vypnute
+    bnc_corpus: IntVar = vg.var()
+    bnc_corpus.set(0)
+    checkercls(generateRightFrame, text='BNC Corpus', variable=bnc_corpus, state=DISABLED).grid(row=2, column=1, sticky=W)
+
     Checkbutton(generateRightFrame, text='Cambridge', variable=vg.var()).grid(row=3, column=1, sticky=W)
 
     # aj uz vyplnene ma byt zapnute vzdy
