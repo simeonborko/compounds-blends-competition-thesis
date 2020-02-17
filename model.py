@@ -17,7 +17,7 @@ import configuration
 import temp_table
 from entity import SourceWord, NamingUnit, Splinter
 from splinter_view_field_manager import SplinterViewFieldManager
-from tools import sk, en
+from tools import sk, en, chunks
 from tools.corpora import SlovakExactCorpus, SlovakSubstringCorpus, EnglishExactCorpus, EnglishSubstringCorpus, corpus_context_manager
 from tools.exception import ResponseDuplicatesException, ResponseTypeError
 
@@ -551,9 +551,6 @@ class Table(EditableTableLike, metaclass=ABCMeta):
             if entity.modified:
                 args.append(entity.data)
 
-        if configuration.DEBUG:
-            print('args', args)
-
         if len(args):
 
             query = "UPDATE {} SET {} WHERE {}".format(
@@ -562,7 +559,9 @@ class Table(EditableTableLike, metaclass=ABCMeta):
                 " AND ".join("{0}=%({0})s".format(p) for p in self.primary_fields)
             )
 
-            affected = self._executemany(query, args).result
+            affected = 0
+            for arg_chunk in chunks(args, 100):
+                affected += self._executemany(query, arg_chunk).result
 
             if len(args) != affected:
                 if configuration.DEBUG:

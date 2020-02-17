@@ -92,6 +92,15 @@ def get_lang2code(cursor: iter) -> dict:
     return dict(cursor)
 
 
+def chunks(lst, n):
+    """
+    Yield successive n-sized chunks from lst.
+    Source: https://stackoverflow.com/questions/312443/how-do-you-split-a-list-into-evenly-sized-chunks
+    """
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
+
+
 class Table:
     def __init__(self, key_fields: iter, other_fields: iter):
         self.key_fields = tuple(key_fields)
