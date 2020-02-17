@@ -395,9 +395,9 @@ class EditableTableLike(TableLike):
     # a teda tieto polia nie su ani editovatelne, ani generovane
     _EXCLUDE_GENERATED = None
 
-    def __init__(self, wb: Workbook, conn, as_affected: bool=False):
+    def __init__(self, wb: Workbook, conn, as_affected: bool = False):
         super().__init__(wb, conn, as_affected)
-        self.__editable, self.__generated = self.__split_fields()
+        self.__editable, self.__generated, self.__neither_editable_nor_generated = self.__split_fields()
 
     @staticmethod
     def __looks_like_generated(field) -> bool:
@@ -418,15 +418,18 @@ class EditableTableLike(TableLike):
         else:
             return self.__looks_like_generated(field)
 
-    def __split_fields(self) -> (Tuple[int, ...], Tuple[int, ...]):
+    def __split_fields(self) -> (Tuple[int, ...], Tuple[int, ...], Tuple[int, ...]):
         """vrati editable, generated"""
         editable = []
         generated = []
+        neither_editable_nor_generated = []
         for i, field in enumerate(self._FIELDS[self._PRIMARY:], self._PRIMARY):
             is_gen = self.__is_generated(field)
             if is_gen is not None:
                 (generated if is_gen else editable).append(i)
-        return tuple(editable), tuple(generated)
+            else:
+                neither_editable_nor_generated.append(i)
+        return tuple(editable), tuple(generated), tuple(neither_editable_nor_generated)
 
     @property
     def _emphasized_columns(self) -> Iterable[int]:
@@ -458,7 +461,7 @@ class EditableTableLike(TableLike):
                     fields_to_update = [self.fields[idx] for idx in indexes_to_update]
                     self._update(all_data, fields_to_update)
                     self._modified = True
-                if self._update_in_sheet(db_values, sheet_cells, self.__generated):
+                if self._update_in_sheet(db_values, sheet_cells, self.__generated + self.__neither_editable_nor_generated):
                     self._modified = True
 
         if configuration.DEBUG:
