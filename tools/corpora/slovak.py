@@ -39,10 +39,12 @@ def download_freq(word: str):
             page = _get_page(word)
             freq = int(_extract(page))
         except SlovakCorpusException:
-            print('Corpus try again')
+            if conf.DEBUG:
+                print('Corpus try again')
             sleep(conf.CORPORA_SLOVAK_SLEEP_TIME_ERROR)
 
-    print(word, freq, sep='\t')
+    if conf.DEBUG:
+        print(word, freq, sep='\t')
     sleep(conf.CORPORA_SLOVAK_SLEEP_TIME_PREVENTIVE)
 
     return freq
