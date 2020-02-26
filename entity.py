@@ -224,7 +224,7 @@ class NamingUnit(Entity):
                     strict = SplinterCls(naming_unit, source_word, True)
                     strict.set_splinter(splinter)
                 except WordSegmentException as e:
-                    print(e, file=sys.stderr)
+                    # print(e, file=sys.stderr)
                     break
 
                 if not strict.alignment:
