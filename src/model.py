@@ -15,8 +15,8 @@ from pymysql.cursors import DictCursor
 from src import configuration, temp_table, table_generate
 from src.entity import SourceWord, NamingUnit, Splinter
 from src.splinter_view_field_manager import SplinterViewFieldManager
-from src.tools import en
-from src.tools.corpora import SlovakExactCorpus, SlovakSubstringCorpus, EnglishExactCorpus, EnglishSubstringCorpus, corpus_context_manager
+from src.tools import en, entity_resource_context_manager
+from src.tools.corpora import SlovakExactCorpus, SlovakSubstringCorpus, EnglishExactCorpus, EnglishSubstringCorpus
 from src.tools.exception import ResponseDuplicatesException, ResponseTypeError
 
 
@@ -908,30 +908,22 @@ class SourceWordTable(Table):
     # UNION SELECT sw3_graphic, first_language, survey_language from naming_unit WHERE sw3_graphic is not null
     # UNION SELECT sw4_graphic, first_language, survey_language from naming_unit WHERE sw4_graphic is not null
 
-    @staticmethod
-    @contextmanager
-    def _en_transcription_context_manager():
-        with en.TranscriptionManager() as trans_man:
-            SourceWord.TRANSCRIPTION_MANAGER = trans_man
-            try:
-                yield
-            finally:
-                SourceWord.TRANSCRIPTION_MANAGER = None
-
     def generate(self, force, **kwargs) -> int:
 
         with ExitStack() as stack:
 
             if kwargs['corpus']:
-                stack.enter_context(corpus_context_manager(
+                stack.enter_context(entity_resource_context_manager(
                     SlovakExactCorpus, SourceWord, 'CORPUS'
                 ))
             if kwargs['bnc_corpus']:
-                stack.enter_context(corpus_context_manager(
+                stack.enter_context(entity_resource_context_manager(
                     EnglishExactCorpus, SourceWord, 'BNC_CORPUS'
                 ))
             if kwargs['cambridge']:
-                stack.enter_context(self._en_transcription_context_manager())
+                stack.enter_context(entity_resource_context_manager(
+                    en.TranscriptionManager, SourceWord, 'TRANSCRIPTION_MANAGER'
+                ))
 
             affected = self._generate(force, SourceWord)
 
@@ -1026,18 +1018,18 @@ WHERE
         with ExitStack() as stack:
 
             if kwargs['corpus']:
-                stack.enter_context(corpus_context_manager(
+                stack.enter_context(entity_resource_context_manager(
                     SlovakExactCorpus, Splinter, 'SK_EXACT_CORPUS'
                 ))
-                stack.enter_context(corpus_context_manager(
+                stack.enter_context(entity_resource_context_manager(
                     SlovakSubstringCorpus, Splinter, 'SK_SUBSTRING_CORPUS'
                 ))
 
             if kwargs['bnc_corpus']:
-                stack.enter_context(corpus_context_manager(
+                stack.enter_context(entity_resource_context_manager(
                     EnglishExactCorpus, Splinter, 'EN_EXACT_CORPUS'
                 ))
-                stack.enter_context(corpus_context_manager(
+                stack.enter_context(entity_resource_context_manager(
                     EnglishSubstringCorpus, Splinter, 'EN_SUBSTRING_CORPUS'
                 ))
 
