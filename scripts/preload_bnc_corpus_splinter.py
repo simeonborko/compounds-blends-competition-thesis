@@ -21,7 +21,7 @@ with Connection() as conn:
     c = conn.cursor()
     c.execute(query)
 
-    all_words = list(filter(lambda x: x is not None, itertools.chain.from_iterable(c)))
+    all_words = list(set(filter(lambda x: x is not None, itertools.chain.from_iterable(c))))
 
 preload(EnglishExactCorpus, all_words)
 preload(EnglishSubstringCorpus, all_words)
