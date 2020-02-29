@@ -1,0 +1,2 @@
+from .table_generate_single_thread import single_thread
+from .table_generate_multi_thread import multi_thread

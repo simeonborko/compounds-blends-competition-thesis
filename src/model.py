@@ -1,5 +1,4 @@
 import math
-import sys
 from abc import ABC, ABCMeta, abstractmethod
 from collections import namedtuple
 from contextlib import contextmanager, ExitStack
@@ -13,7 +12,7 @@ from openpyxl.styles import Font, PatternFill
 from openpyxl.worksheet import Worksheet
 from pymysql.cursors import DictCursor
 
-from src import configuration, temp_table
+from src import configuration, temp_table, table_generate
 from src.entity import SourceWord, NamingUnit, Splinter
 from src.splinter_view_field_manager import SplinterViewFieldManager
 from src.tools import en
@@ -60,6 +59,9 @@ class TableLike(ABC):
         c = self.__conn.cursor(**kwargs)
         res = c.executemany(*args) or 0
         return self.ExecuteResult(c, res)
+
+    def _ping_connection(self):
+        self.__conn.ping(reconnect=True)
 
     def _update_in_sheet(self, db_values: list, sheet_cells: List[Cell], indices: Iterable[int]) -> bool:
         """
@@ -545,36 +547,12 @@ class Table(EditableTableLike, metaclass=ABCMeta):
 
         c = self._generate_get_executed_cursor(force, **kwargs)
 
-        args = []
-
-        for data in c:
-            entity = cls(self, data)
-            entity.generate()
-            if entity.modified:
-                args.append(entity.data)
-
-        if configuration.DEBUG:
-            print('args', args)
-
-        if len(args):
-
-            query = "UPDATE {} SET {} WHERE {}".format(
-                self._NAME,
-                ", ".join("{0}=%({0})s".format(g) for g in self.generated_fields),
-                " AND ".join("{0}=%({0})s".format(p) for p in self.primary_fields)
-            )
-
-            affected = self._executemany(query, args).result
-
-            if len(args) != affected:
-                if configuration.DEBUG:
-                    print("Pocet args: {}, pocet affected: {}".format(len(args), affected), file=sys.stderr)
-                affected = affected or 0
-
-            return affected
-
+        if configuration.GENERATE_MULTITHREADED:
+            affected = table_generate.multi_thread(self, c, cls)
         else:
-            return 0
+            affected = table_generate.single_thread(self, c, cls)
+
+        return affected
 
     def integrity_before(self):
         pass

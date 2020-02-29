@@ -155,12 +155,12 @@ with VarManager(configuration.CHECKBOX_FILE) as varmanager:
     # generate
     vg = varmanager.group(Group.GEN)
     for i, cls in enumerate(GEN_CLSS):
-        if cls is NamingUnitTable:
-            naming_unit_var: IntVar = vg.var()
-            naming_unit_var.set(0)
-            checkercls(generateLeftFrame, text=cls.name(), variable=naming_unit_var, state=DISABLED).grid(row=i, sticky=W, padx=(0, 30), pady=2)
-        else:
-            Checkbutton(generateLeftFrame, text=cls.name(), variable=vg.var()).grid(row=i, sticky=W, padx=(0, 30), pady=2)
+        # if cls is NamingUnitTable:
+        #     naming_unit_var: IntVar = vg.var()
+        #     naming_unit_var.set(0)
+        #     checkercls(generateLeftFrame, text=cls.name(), variable=naming_unit_var, state=DISABLED).grid(row=i, sticky=W, padx=(0, 30), pady=2)
+        # else:
+        Checkbutton(generateLeftFrame, text=cls.name(), variable=vg.var()).grid(row=i, sticky=W, padx=(0, 30), pady=2)
     Button(generateRightFrame, text='Vyplniť automatizovane', command=generate).grid(padx=10, pady=10, row=0, column=0, rowspan=4)
     vg = varmanager.group(Group.OPTIONS)
 
