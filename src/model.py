@@ -15,7 +15,7 @@ from pymysql.cursors import DictCursor
 from src import configuration, temp_table, table_generate
 from src.entity import SourceWord, NamingUnit, Splinter
 from src.splinter_view_field_manager import SplinterViewFieldManager
-from src.tools import en, entity_resource_context_manager
+from src.tools import en, entity_resource_context_manager, entity_simple_context_manager
 from src.tools.corpora import SlovakExactCorpus, SlovakSubstringCorpus, EnglishExactCorpus, EnglishSubstringCorpus
 from src.tools.exception import ResponseDuplicatesException, ResponseTypeError
 
@@ -858,9 +858,16 @@ class NamingUnitTable(Table):
 
     # noinspection PyUnusedLocal
     def generate(self, force, **kwargs) -> int:
-        affected = self._generate(force, NamingUnit)
-        if affected > 0:
-            self._modified = True
+
+        with ExitStack() as stack:
+
+            if kwargs['lexsh_spp']:
+                stack.enter_context(entity_simple_context_manager(
+                    True, NamingUnit, 'LEXSH_SPP'
+                ))
+
+            affected = self._generate(force, NamingUnit)
+
         return affected
 
     def integrity_before(self):

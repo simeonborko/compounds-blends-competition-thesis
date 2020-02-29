@@ -43,7 +43,7 @@ def sync():
 def generate():
     clss = [GEN_CLSS[i] for i in varmanager[Group.GEN]]
     vargroup = varmanager[Group.OPTIONS]
-    threading.Thread(target=worker.generate, args=(clss, unhighlight(), vargroup[0], vargroup[1], vargroup[2], vargroup[3],
+    threading.Thread(target=worker.generate, args=(clss, unhighlight(), vargroup[0], vargroup[1], vargroup[2], vargroup[3], vargroup[4],
                                                    widgetmanager.widgets)).start()
 
 
@@ -161,7 +161,7 @@ with VarManager(configuration.CHECKBOX_FILE) as varmanager:
         #     checkercls(generateLeftFrame, text=cls.name(), variable=naming_unit_var, state=DISABLED).grid(row=i, sticky=W, padx=(0, 30), pady=2)
         # else:
         Checkbutton(generateLeftFrame, text=cls.name(), variable=vg.var()).grid(row=i, sticky=W, padx=(0, 30), pady=2)
-    Button(generateRightFrame, text='Vyplniť automatizovane', command=generate).grid(padx=10, pady=10, row=0, column=0, rowspan=4)
+    Button(generateRightFrame, text='Vyplniť automatizovane', command=generate).grid(padx=10, pady=10, row=0, column=0, rowspan=5)
     vg = varmanager.group(Group.OPTIONS)
 
     # aj uz vyplnene natvrdo zapnute
@@ -172,6 +172,7 @@ with VarManager(configuration.CHECKBOX_FILE) as varmanager:
     Checkbutton(generateRightFrame, text='SK Korpus', variable=vg.var()).grid(row=1, column=1, sticky=W)
     Checkbutton(generateRightFrame, text='BNC Corpus', variable=vg.var()).grid(row=2, column=1, sticky=W)
     Checkbutton(generateRightFrame, text='Cambridge', variable=vg.var()).grid(row=3, column=1, sticky=W)
+    Checkbutton(generateRightFrame, text='LexSh, SPP', variable=vg.var()).grid(row=4, column=1, sticky=W)
 
     # integrity
     vg = varmanager.group(Group.INTEG)

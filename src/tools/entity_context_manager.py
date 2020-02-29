@@ -1,5 +1,4 @@
 from contextlib import contextmanager
-from typing import Type
 
 
 @contextmanager
@@ -15,3 +14,12 @@ def entity_resource_context_manager(resource_getter, entity_class, attrname: str
             yield
         finally:
             setattr(entity_class, attrname, None)
+
+
+@contextmanager
+def entity_simple_context_manager(value, entity_class, attrname: str):
+    setattr(entity_class, attrname, value)
+    try:
+        yield
+    finally:
+        setattr(entity_class, attrname, None)
