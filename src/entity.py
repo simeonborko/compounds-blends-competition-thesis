@@ -1,14 +1,14 @@
 from abc import abstractmethod, ABC
 from typing import Optional
 
-import sys
 from syllabiky.syllabiky import split_phrase
 from syllabiky.DbMatcher import DbMatcher
-from tools import sk, en
-from tools.exception import WordSegmentException
-from tools.splinter import SlovakGraphicSplinter, SlovakPhoneticSplinter, EnglishGraphicSplinter, \
+from src.tools import en
+from src.tools import sk
+from src.tools.exception import WordSegmentException
+from src.tools.splinter import SlovakGraphicSplinter, SlovakPhoneticSplinter, EnglishGraphicSplinter, \
     EnglishPhoneticSplinter, Overlap, LexshType, parse_lexsh_type
-from tools.corpora import SlovakExactCorpus, SlovakSubstringCorpus, EnglishExactCorpus, EnglishSubstringCorpus
+from src.tools.corpora import SlovakExactCorpus, SlovakSubstringCorpus, EnglishExactCorpus, EnglishSubstringCorpus
 
 
 class Entity(ABC):

@@ -5,7 +5,7 @@ from typing import Optional, Sequence, List, Callable
 
 from unidecode import unidecode
 
-from tools import sk, en
+from src.tools import sk, en
 
 
 class LexshType(Enum):

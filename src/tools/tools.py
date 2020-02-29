@@ -2,7 +2,7 @@ from collections import OrderedDict
 
 import pymysql
 import csv
-import configuration as c
+from src import configuration as c
 from pymysql.constants import FIELD_TYPE
 
 

@@ -1,4 +1,4 @@
-from model import Overview, SourceWordTable, SplinterView
+from src.model import Overview, SourceWordTable, SplinterView
 from test import MyTestCase
 
 

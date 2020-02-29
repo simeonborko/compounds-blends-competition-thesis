@@ -2,7 +2,7 @@ from typing import List
 
 from cached_property import cached_property
 
-from tools.splinter import Alignment
+from src.tools.splinter import Alignment
 
 
 class Overlap:

@@ -1,6 +1,6 @@
 import csv
 
-from tools import Connection
+from src.tools import Connection
 
 with Connection() as conn:
     c = conn.cursor()

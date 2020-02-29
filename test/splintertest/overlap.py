@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from tools.splinter import Overlap, Splinter, SlovakGraphicSplinter
+from src.tools.splinter import Overlap, Splinter, SlovakGraphicSplinter
 
 
 class OverlapTest(TestCase):

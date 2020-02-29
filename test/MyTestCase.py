@@ -2,7 +2,7 @@ from unittest import TestCase
 
 from openpyxl import Workbook, load_workbook
 
-import configuration as c
+from src import configuration as c
 
 import pymysql
 

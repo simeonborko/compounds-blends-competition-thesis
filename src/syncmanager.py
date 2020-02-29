@@ -1,6 +1,6 @@
 from collections import defaultdict, OrderedDict
-from model import SplinterView, NamingUnitTable, ImageTable, SourceWordTable, SplinterTable, Overview, Table
-import configuration
+from src.model import SplinterView, NamingUnitTable, ImageTable, SourceWordTable, SplinterTable, Overview, Table
+from src import configuration
 
 
 class SyncManager:

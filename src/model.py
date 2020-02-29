@@ -13,13 +13,12 @@ from openpyxl.styles import Font, PatternFill
 from openpyxl.worksheet import Worksheet
 from pymysql.cursors import DictCursor
 
-import configuration
-import temp_table
-from entity import SourceWord, NamingUnit, Splinter
-from splinter_view_field_manager import SplinterViewFieldManager
-from tools import sk, en
-from tools.corpora import SlovakExactCorpus, SlovakSubstringCorpus, EnglishExactCorpus, EnglishSubstringCorpus, corpus_context_manager
-from tools.exception import ResponseDuplicatesException, ResponseTypeError
+from src import configuration, temp_table
+from src.entity import SourceWord, NamingUnit, Splinter
+from src.splinter_view_field_manager import SplinterViewFieldManager
+from src.tools import en
+from src.tools.corpora import SlovakExactCorpus, SlovakSubstringCorpus, EnglishExactCorpus, EnglishSubstringCorpus, corpus_context_manager
+from src.tools.exception import ResponseDuplicatesException, ResponseTypeError
 
 
 class TableLike(ABC):

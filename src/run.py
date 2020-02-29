@@ -2,13 +2,11 @@ import threading
 from enum import Enum
 from tkinter import *
 
-from varmanager import VarManager
-from widgetmanager import WidgetManager
-from model import ImageTable, LanguageTable, NamingUnitTable, RespondentTable, SourceWordTable, \
+from src.varmanager import VarManager
+from src.widgetmanager import WidgetManager
+from src.model import ImageTable, LanguageTable, NamingUnitTable, RespondentTable, SourceWordTable, \
     SplinterTable, SplinterView, Overview, ResponseView
-import configuration
-import worker
-
+from src import configuration, worker
 
 SYNC_CLSS = (ImageTable, LanguageTable, NamingUnitTable, RespondentTable, SourceWordTable, SplinterTable)
 GEN_CLSS = (

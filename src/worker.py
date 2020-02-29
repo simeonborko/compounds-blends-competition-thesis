@@ -6,10 +6,10 @@ from tkinter import NORMAL, messagebox, DISABLED
 
 from openpyxl import Workbook, load_workbook
 
-import configuration
-from syncmanager import SyncManager
-from tools import Connection
-from tools.exception import ResponseDuplicatesException, ResponseTypeError
+from src import configuration
+from src.syncmanager import SyncManager
+from src.tools import Connection
+from src.tools.exception import ResponseDuplicatesException, ResponseTypeError
 
 
 def __msg(syncmanager: SyncManager, msgs=None) -> str:

@@ -73,9 +73,8 @@
 """
 import csv
 from collections import OrderedDict
-from operator import itemgetter
 
-from tools.tools import Connection, tsv_reader, get_res2lang, get_lang2code, Table
+from src.tools.tools import Connection, tsv_reader, get_res2lang, get_lang2code, Table
 from sys import stderr
 
 

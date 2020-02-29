@@ -3,9 +3,9 @@ import sys
 from abc import ABC, abstractmethod
 from typing import Optional
 
-import configuration
-from tools import CorpConnection
-from tools.storage import DatabaseStorage
+from src import configuration
+from src.tools import CorpConnection
+from src.tools.storage import DatabaseStorage
 
 
 class AbstractCorpus(ABC):

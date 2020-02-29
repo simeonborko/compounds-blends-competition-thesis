@@ -2,11 +2,11 @@ from os.path import isfile
 
 from openpyxl import load_workbook
 
-import configuration
-from model import NamingUnitTable
-from syncmanager import SyncManager
-from tools import Connection
-from worker import backup
+from src import configuration
+from src.model import NamingUnitTable
+from src.syncmanager import SyncManager
+from src.tools import Connection
+from src.worker import backup
 
 
 def generate_naming_unit(unhighlight=True, force=True):

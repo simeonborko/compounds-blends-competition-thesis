@@ -1,7 +1,7 @@
 from unittest import TestCase
 
-from tools.exception import WordSegmentException
-from tools.splinter import SlovakPhoneticSplinter
+from src.tools.exception import WordSegmentException
+from src.tools.splinter import SlovakPhoneticSplinter
 
 
 class FindSplinter(TestCase):

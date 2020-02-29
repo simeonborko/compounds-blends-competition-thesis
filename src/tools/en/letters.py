@@ -1,4 +1,4 @@
-from tools.redundant import REDUNDANT
+from src.tools.redundant import REDUNDANT
 
 
 def remove_redundant(word):

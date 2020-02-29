@@ -1,4 +1,4 @@
-from model import NamingUnitTable, SourceWordTable, SplinterTable
+from src.model import NamingUnitTable, SourceWordTable, SplinterTable
 from test import MyTestCase
 
 

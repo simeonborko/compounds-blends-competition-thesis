@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from tools.splinter import Splinter
+from src.tools.splinter import Splinter
 
 
 class FindSplinter(TestCase):

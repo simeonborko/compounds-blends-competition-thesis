@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from tools.splinter import SlovakGraphicSplinter
+from src.tools.splinter import SlovakGraphicSplinter
 
 
 class FindSplinter(TestCase):

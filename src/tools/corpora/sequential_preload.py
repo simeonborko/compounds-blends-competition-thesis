@@ -1,6 +1,6 @@
 from typing import Type, List
 
-from tools import sequential_preload_common
+from src.tools import sequential_preload_common
 from .AbstractCorpus import AbstractCorpus
 
 

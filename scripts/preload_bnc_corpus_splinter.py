@@ -1,7 +1,7 @@
 import itertools
 
-from tools import Connection
-from tools.corpora import EnglishExactCorpus, EnglishSubstringCorpus, preload
+from src.tools import Connection
+from src.tools.corpora import EnglishExactCorpus, EnglishSubstringCorpus, preload
 
 query = """SELECT
   IF(S.sw1_splinter IS NULL OR S.sw1_splinter = '', S.G_sw1_splinter, S.sw1_splinter) AS splinter_1,

@@ -1,4 +1,4 @@
-import configuration as c
+from src import configuration as c
 import sys
 import subprocess
 

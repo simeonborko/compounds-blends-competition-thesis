@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from tools.splinter import SlovakGraphicSplinter, LexshType, SplitPointType, EnglishPhoneticSplinter
+from src.tools.splinter import SlovakGraphicSplinter, LexshType, SplitPointType, EnglishPhoneticSplinter
 
 
 class SplitPointTest(TestCase):

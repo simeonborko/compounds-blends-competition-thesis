@@ -1,7 +1,7 @@
 from typing import Optional
 from unittest import TestCase
 
-from tools.splinter import SlovakGraphicSplinter, EnglishGraphicSplinter, LexshType
+from src.tools.splinter import SlovakGraphicSplinter, LexshType
 
 
 

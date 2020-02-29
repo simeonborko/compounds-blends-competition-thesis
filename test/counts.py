@@ -1,7 +1,8 @@
 from unittest import TestCase
 
-from tools import sk, en
-from tools.exception import WordSegmentException
+from src.tools import en
+from src.tools import sk
+from src.tools.exception import WordSegmentException
 
 
 class SK(TestCase):

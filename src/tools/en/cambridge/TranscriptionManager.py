@@ -7,9 +7,9 @@ from urllib.request import urlopen
 from pyquery import PyQuery
 from unidecode import unidecode
 
-import configuration
-from tools import CambridgeConnection
-from tools.storage import DatabaseStorage
+from src import configuration
+from src.tools import CambridgeConnection
+from src.tools.storage import DatabaseStorage
 
 
 class TranscriptionManager:

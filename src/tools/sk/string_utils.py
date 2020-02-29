@@ -4,11 +4,10 @@ import itertools
 from unidecode import unidecode
 from sys import stderr
 
-from tools.exception import WordSegmentException
-from tools.redundant import REDUNDANT
+from src.tools.exception import WordSegmentException
+from src.tools.redundant import REDUNDANT
 from .phones import PHONES_PATTERN
 from enum import Enum
-
 
 
 def replace_i(word):

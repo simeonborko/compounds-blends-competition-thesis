@@ -1,5 +1,5 @@
 import csv
-from tools import Connection
+from src.tools import Connection
 
 en_file = 'data/en_responses.csv'
 sk_file = 'data/sk_responses.csv'

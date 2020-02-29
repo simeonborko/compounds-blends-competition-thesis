@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from tools.splinter import EnglishPhoneticSplinter
+from src.tools.splinter import EnglishPhoneticSplinter
 
 
 class FindSplinter(TestCase):

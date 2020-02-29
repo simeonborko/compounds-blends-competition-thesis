@@ -1,4 +1,4 @@
-from splinter_view_field_manager import SplinterViewFieldManager
+from src.splinter_view_field_manager import SplinterViewFieldManager
 
 NU_FIELDS = (
         'nu_graphic', 'first_language', 'survey_language', 'image_id',

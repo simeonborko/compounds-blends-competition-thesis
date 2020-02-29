@@ -3,7 +3,7 @@ Odstrani respondentov a ich odpovede.
 Podmienky: first_language not in [SK, EN] or age < 16
 """
 
-from tools import Connection
+from src.tools import Connection
 
 query = """SELECT respondent_id FROM respondent
 WHERE first_language != 'SK' AND first_language != 'EN'

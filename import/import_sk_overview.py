@@ -2,10 +2,8 @@
 
 from openpyxl import load_workbook
 import csv
-from tools import Connection, tsv_reader, get_res2lang, decoded, Table
-from sys import stderr
+from src.tools.tools import Connection, tsv_reader, get_res2lang, decoded, Table
 from collections import OrderedDict
-from operator import itemgetter
 
 
 def reader(wb, sheet_name):

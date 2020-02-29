@@ -1,6 +1,6 @@
 from typing import List
 
-from tools.storage import DatabaseStorage
+from src.tools.storage import DatabaseStorage
 
 
 # Tato funkcia vykonava spolocnu funkcionalitu pre sekvencny preload.

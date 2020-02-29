@@ -3,7 +3,7 @@ from urllib.parse import urlencode
 from urllib.request import urlopen
 from time import sleep
 
-import configuration as conf
+from src import configuration as conf
 from .AbstractCorpus import AbstractCorpus
 
 

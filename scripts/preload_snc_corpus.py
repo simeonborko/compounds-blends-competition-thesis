@@ -1,5 +1,5 @@
-from tools import Connection
-from tools.corpora import SlovakExactCorpus, preload
+from src.tools import Connection
+from src.tools.corpora import SlovakExactCorpus, preload
 
 with Connection() as conn:
     q = 'SELECT DISTINCT sw_graphic FROM source_word WHERE survey_language = %s'

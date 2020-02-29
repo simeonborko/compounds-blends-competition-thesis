@@ -1,5 +1,5 @@
-from tools import Connection, sequential_preload_common
-from tools.en import TranscriptionManager
+from src.tools import Connection, sequential_preload_common
+from src.tools.en import TranscriptionManager
 
 with Connection() as conn:
     q = 'SELECT DISTINCT sw_graphic FROM source_word WHERE survey_language = %s'
