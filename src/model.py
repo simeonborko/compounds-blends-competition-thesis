@@ -18,6 +18,7 @@ from src.splinter_view_field_manager import SplinterViewFieldManager
 from src.tools import en, entity_resource_context_manager, entity_simple_context_manager
 from src.tools.corpora import SlovakExactCorpus, SlovakSubstringCorpus, EnglishExactCorpus, EnglishSubstringCorpus
 from src.tools.exception import ResponseDuplicatesException, ResponseTypeError
+from src.tools.splinter import SplinterManager
 
 
 class TableLike(ABC):
@@ -870,6 +871,9 @@ class NamingUnitTable(Table):
             if kwargs['splinter_derived']:
                 stack.enter_context(entity_simple_context_manager(
                     True, NamingUnit, 'SPLINTER_DERIVED'
+                ))
+                stack.enter_context(entity_simple_context_manager(
+                    SplinterManager(), NamingUnit, 'SPLINTER_MANAGER'
                 ))
 
             affected = self._generate(force, NamingUnit)

@@ -7,7 +7,7 @@ from src.tools import en
 from src.tools import sk
 from src.tools.exception import WordSegmentException
 from src.tools.splinter import SlovakGraphicSplinter, SlovakPhoneticSplinter, EnglishGraphicSplinter, \
-    EnglishPhoneticSplinter, Overlap, LexshType, parse_lexsh_type
+    EnglishPhoneticSplinter, Overlap, LexshType, parse_lexsh_type, SplinterManager
 from src.tools.corpora import SlovakExactCorpus, SlovakSubstringCorpus, EnglishExactCorpus, EnglishSubstringCorpus
 
 
@@ -119,6 +119,7 @@ class SourceWord(Entity):
 class NamingUnit(Entity):
 
     SPLINTER_DERIVED: Optional[bool] = None  # SPLINTER_DERIVED ma nastavit volajuci
+    SPLINTER_MANAGER: Optional[SplinterManager] = None
     __MATCHER = DbMatcher()
 
     def __init__(self, table, data: dict):
@@ -126,6 +127,7 @@ class NamingUnit(Entity):
         self.__lang = self['survey_language']
         if self.__lang not in ('SK', 'EN'):
             raise Exception
+        self.__splinter_manager = self.SPLINTER_MANAGER
 
     def __nu_syllabic(self):
         if self.__lang == 'SK':
@@ -177,7 +179,7 @@ class NamingUnit(Entity):
             if not sw_graphic or not gs_splinter:
                 break
 
-            strict = cls(self['nu_graphic'], sw_graphic, True)
+            strict = self.__splinter_manager.get(cls, self['nu_graphic'], sw_graphic, True)
             strict.set_splinter(gs_splinter)
             lexsh = strict.lexical_shortening
             if lexsh:
@@ -189,7 +191,7 @@ class NamingUnit(Entity):
                         # splintre su rovnake => ziadna zmena
                         lexsh_whatm.append(lexsh_main[-1])
                     else:
-                        modified = cls(self['nu_graphic'], sw_graphic, False)
+                        modified = self.__splinter_manager.get(cls, self['nu_graphic'], sw_graphic, False)
                         modified.set_splinter(gm_splinter)
                         lexsh = modified.lexical_shortening
                         if lexsh:
@@ -222,7 +224,7 @@ class NamingUnit(Entity):
                     break
 
                 try:
-                    strict = SplinterCls(naming_unit, source_word, True)
+                    strict = self.__splinter_manager.get(SplinterCls, naming_unit, source_word, True)
                     strict.set_splinter(splinter)
                 except WordSegmentException as e:
                     # print(e, file=sys.stderr)
@@ -262,7 +264,7 @@ class NamingUnit(Entity):
             for N in (1, 2, 3):
                 res = None
                 if self['nu_graphic'] and self[f'sw{N}_graphic'] and self[f'sw{N}_syllabic'] and self[f'gs_sw{N}_splinter']:
-                    s = SlovakGraphicSplinter(self['nu_graphic'], self[f'sw{N}_graphic'], True)
+                    s = self.__splinter_manager.get(SlovakGraphicSplinter, self['nu_graphic'], self[f'sw{N}_graphic'], True)
                     if s.set_splinter(self[f'gs_sw{N}_splinter']):
                         lexsh_type = self.__get_lexsh_type(N)
                         if lexsh_type is not None and s.lexical_shortening == lexsh_type:
@@ -275,7 +277,7 @@ class NamingUnit(Entity):
             for N in (1, 2, 3):
                 res = None
                 if self['nu_phonetic'] and self[f'sw{N}_phonetic'] and self[f'ps_sw{N}_splinter']:
-                    s = EnglishPhoneticSplinter(self['nu_phonetic'], self[f'sw{N}_phonetic'], True)
+                    s = self.__splinter_manager.get(EnglishPhoneticSplinter, self['nu_phonetic'], self[f'sw{N}_phonetic'], True)
                     if s.set_splinter(self[f'ps_sw{N}_splinter']):
                         lexsh_type = self.__get_lexsh_type(N)
                         if lexsh_type is not None and s.lexical_shortening == lexsh_type:
@@ -293,6 +295,7 @@ class NamingUnit(Entity):
             self.__lexsh()
             self.__overlap()
             self.__split_point_placement()
+            self.__splinter_manager.clear()
 
 
 class Splinter(Entity):

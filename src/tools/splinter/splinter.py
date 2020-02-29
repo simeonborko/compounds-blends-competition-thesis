@@ -3,6 +3,7 @@ from abc import ABCMeta, abstractmethod
 from enum import Enum, auto
 from typing import Optional, Sequence, List, Callable
 
+from cached_property import cached_property
 from unidecode import unidecode
 
 from src.tools import sk, en
@@ -108,10 +109,12 @@ class Splinter:
 
         self._sourceword = sourceword  # kvoli get_split_point
 
+    @cached_property
     def __all_alignments(self) -> List[Alignment]:
         aligns = []
         for sw_start in range(len(self.__sourceword)):
             for nu_start in range(len(self.__namingunit)):
+
                 for sw_stop in range(sw_start+1, len(self.__sourceword)+1):
                     for nu_stop in range(nu_start+1, len(self.__namingunit)+1):
                         aligns.append(Alignment(
@@ -126,7 +129,7 @@ class Splinter:
     def find_splinter(self) -> bool:
         if self.__alignment is not None:
             raise Exception
-        aligns = self.__all_alignments()
+        aligns = self.__all_alignments
         if len(aligns) > 0:
             alignment = max(aligns, key=lambda align: align.score)
             if alignment.score > 0:
@@ -134,10 +137,10 @@ class Splinter:
                 return True
         return False
 
-    def set_splinter(self, splinter: Sequence) -> bool:
-        if self.__alignment is not None:
+    def set_splinter(self, splinter: Sequence, prevent_to_set_new_alignment: bool = False) -> bool:
+        if self.__alignment is not None and prevent_to_set_new_alignment:
             raise Exception
-        self.__alignment = next(filter(lambda align: align.splinter == splinter, self.__all_alignments()), None)
+        self.__alignment = next(filter(lambda align: align.splinter == splinter, self.__all_alignments), None)
         return self.__alignment is not None
 
     @property
@@ -193,8 +196,8 @@ class GraphicSplinter(StringSplinter, metaclass=ABCMeta):
     def __init__(self, namingunit: str, sourceword: str, strict: bool, list_fn: Callable[[str], list]):
         super().__init__(namingunit.lower(), sourceword.lower(), strict, list_fn)
 
-    def set_splinter(self, splinter: str) -> bool:
-        return super().set_splinter(self._list_fn(splinter))
+    def set_splinter(self, splinter: str, prevent_to_set_new_alignment: bool = False) -> bool:
+        return super().set_splinter(self._list_fn(splinter), prevent_to_set_new_alignment)
 
     @property
     def splinter(self) -> Optional[str]:
@@ -204,8 +207,8 @@ class GraphicSplinter(StringSplinter, metaclass=ABCMeta):
 
 class PhoneticSplinter(StringSplinter, metaclass=ABCMeta):
 
-    def set_splinter(self, splinter: str) -> bool:
-        return super().set_splinter(self._list_fn(splinter.replace(' ', '')))
+    def set_splinter(self, splinter: str, prevent_to_set_new_alignment: bool = False) -> bool:
+        return super().set_splinter(self._list_fn(splinter.replace(' ', '')), prevent_to_set_new_alignment)
 
     @property
     def splinter(self) -> Optional[str]:
