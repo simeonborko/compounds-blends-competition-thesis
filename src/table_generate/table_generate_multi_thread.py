@@ -47,23 +47,28 @@ def multi_thread(table, cursor, cls) -> int:
     t = threading.Thread(target=updater, args=(table, q, thread_data))
     t.start()
 
-    entity_modified_counter = 0
+    try:
 
-    for data in cursor:
-        entity = cls(table, data)
-        entity.generate()
-        if entity.modified:
-            q.put(entity.data)
-            entity_modified_counter += 1
+        entity_modified_counter = 0
 
-    thread_data['putting_done'] = True
+        for data in cursor:
+            entity = cls(table, data)
+            entity.generate()
+            if entity.modified:
+                q.put(entity.data)
+                entity_modified_counter += 1
 
-    q.join()
+    finally:
 
-    # pockame max 10 minut, viac to asi nema zmysel
-    t.join(10 * 60)
-    if t.is_alive():
-        raise Exception('Vlakno na aktualizaciu databazy sa zaseklo')
+        # ukoncujuca podmienka vlakna musi byt tu, vo finally, aby sa to ukoncilo vzdy
+        thread_data['putting_done'] = True
+
+        q.join()
+
+        # pockame max 10 minut, viac to asi nema zmysel
+        t.join(10 * 60)
+        if t.is_alive():
+            raise Exception('Vlakno na aktualizaciu databazy sa zaseklo')
 
     if entity_modified_counter != thread_data['affected']:
         if configuration.DEBUG:
