@@ -1127,10 +1127,22 @@ class SplinterView(EditableTableLike):
         'sw1_splinter_len', 'sw2_splinter_len', 'sw3_splinter_len', 'sw4_splinter_len',
         'sw1_splinter_freq_exact', 'sw2_splinter_freq_exact', 'sw3_splinter_freq_exact', 'sw4_splinter_freq_exact',
         'sw1_splinter_freq_any', 'sw2_splinter_freq_any', 'sw3_splinter_freq_any', 'sw4_splinter_freq_any',
-        'G_sw1_splinter', 'G_sw1_splinter__ignore', 'G_sw2_splinter', 'G_sw2_splinter__ignore',
-        'G_sw3_splinter', 'G_sw3_splinter__ignore', 'G_sw4_splinter', 'G_sw4_splinter__ignore',
-        'G_sw1_splinter_len', 'G_sw1_splinter_len__ignore', 'G_sw2_splinter_len', 'G_sw2_splinter_len__ignore',
-        'G_sw3_splinter_len', 'G_sw3_splinter_len__ignore', 'G_sw4_splinter_len', 'G_sw4_splinter_len__ignore'
+        'G_sw1_splinter',
+        # 'G_sw1_splinter__ignore',
+        'G_sw2_splinter',
+        # 'G_sw2_splinter__ignore',
+        'G_sw3_splinter',
+        # 'G_sw3_splinter__ignore',
+        'G_sw4_splinter',
+        # 'G_sw4_splinter__ignore',
+        'G_sw1_splinter_len',
+        # 'G_sw1_splinter_len__ignore',
+        'G_sw2_splinter_len',
+        # 'G_sw2_splinter_len__ignore',
+        'G_sw3_splinter_len',
+        # 'G_sw3_splinter_len__ignore',
+        'G_sw4_splinter_len',
+        # 'G_sw4_splinter_len__ignore'
     )
 
     # typy splintrov
