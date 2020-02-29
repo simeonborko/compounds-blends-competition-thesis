@@ -697,6 +697,11 @@ class NamingUnitTable(Table):
         # 'split_point_1', 'G_split_point_1', 'split_point_2', 'G_split_point_2', 'split_point_3', 'G_split_point_3'
     )
 
+    # Stlpceky ohlasom Lexical shortening, Overlapping a Split Point Placement:
+    # - su v databaze v tabulke naming_unit,
+    # - generuju sa v tejto triede (NamingUnitTable),
+    # - ale zobrazuju sa az v harku Splinter View.
+
     _HIDDEN_BUT_EDITABLE = {
         'lexsh_main', 'G_lexsh_main__ignore',
         'lexsh_sm', 'G_lexsh_sm__ignore',
@@ -862,9 +867,9 @@ class NamingUnitTable(Table):
 
         with ExitStack() as stack:
 
-            if kwargs['lexsh_spp']:
+            if kwargs['splinter_derived']:
                 stack.enter_context(entity_simple_context_manager(
-                    True, NamingUnit, 'LEXSH_SPP'
+                    True, NamingUnit, 'SPLINTER_DERIVED'
                 ))
 
             affected = self._generate(force, NamingUnit)

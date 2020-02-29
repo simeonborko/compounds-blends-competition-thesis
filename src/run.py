@@ -172,7 +172,7 @@ with VarManager(configuration.CHECKBOX_FILE) as varmanager:
     Checkbutton(generateRightFrame, text='SK Korpus', variable=vg.var()).grid(row=1, column=1, sticky=W)
     Checkbutton(generateRightFrame, text='BNC Corpus', variable=vg.var()).grid(row=2, column=1, sticky=W)
     Checkbutton(generateRightFrame, text='Cambridge', variable=vg.var()).grid(row=3, column=1, sticky=W)
-    Checkbutton(generateRightFrame, text='LexSh, SPP', variable=vg.var()).grid(row=4, column=1, sticky=W)
+    Checkbutton(generateRightFrame, text='Odvodené zo splintru', variable=vg.var()).grid(row=4, column=1, sticky=W)
 
     # integrity
     vg = varmanager.group(Group.INTEG)

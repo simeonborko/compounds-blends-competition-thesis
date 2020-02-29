@@ -17,7 +17,7 @@ def generate_naming_unit(unhighlight=True, force=True):
     wb = load_workbook(configuration.XLSX_FILE)
     with Connection() as conn:
         syncmanager = SyncManager([NamingUnitTable], wb, conn)
-        syncmanager.generate(unhighlight, force=force)
+        syncmanager.generate(unhighlight, force=force, splinter_derived=True)
         conn.commit()
 
     wb.save(configuration.XLSX_FILE)

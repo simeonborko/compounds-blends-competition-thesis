@@ -118,7 +118,7 @@ class SourceWord(Entity):
 
 class NamingUnit(Entity):
 
-    LEXSH_SPP: Optional[bool] = None  # LEXSH_SPP ma nastavit volajuci
+    SPLINTER_DERIVED: Optional[bool] = None  # SPLINTER_DERIVED ma nastavit volajuci
     __MATCHER = DbMatcher()
 
     def __init__(self, table, data: dict):
@@ -289,7 +289,7 @@ class NamingUnit(Entity):
         self.__nu_graphic_len()
         self.__nu_phonetic_len()
         self.__nu_syllabic_len()
-        if self.LEXSH_SPP:
+        if self.SPLINTER_DERIVED:
             self.__lexsh()
             self.__overlap()
             self.__split_point_placement()
