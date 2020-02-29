@@ -21,7 +21,7 @@ def updater(table, q: Queue, thread_info: dict):
 
         if len(args):
             query = "UPDATE {} SET {} WHERE {}".format(
-                table.name,
+                table.name(),
                 ", ".join("{0}=%({0})s".format(g) for g in table.generated_fields),
                 " AND ".join("{0}=%({0})s".format(p) for p in table.primary_fields)
             )
