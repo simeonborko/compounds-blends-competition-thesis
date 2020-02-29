@@ -687,7 +687,8 @@ class NamingUnitTable(Table):
 
         'nu_word_class', 'nu_phonetic',
         *__FROM_SW_B,
-        'nu_syllabic', 'G_nu_syllabic', 'G_nu_syllabic__ignore',
+        'nu_syllabic', 'G_nu_syllabic',
+        # 'G_nu_syllabic__ignore',
         'nu_graphic_len', 'G_nu_graphic_len',
         'nu_phonetic_len', 'G_nu_phonetic_len',
         'nu_syllabic_len', 'G_nu_syllabic_len',
