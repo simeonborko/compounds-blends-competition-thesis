@@ -1,11 +1,10 @@
 # noinspection PyUnresolvedReferences
-from settings import DB, DB_PROXY, SYNC_OVERVIEW, DEBUG, TKINTER_TRACEBACK, \
+from settings import DB, PASSWD, DB_PROXY, SYNC_OVERVIEW, DEBUG, TKINTER_TRACEBACK, \
     XLSX_FILE, BACKUP_FILE_FMT, CHECKBOX_FILE, CAMBRIDGE_BACKUP_DIR, CORPORA_BACKUP_DIR
 
 HOST = 'mariadb101.websupport.sk'
 PORT = 3312
 USER = DB
-PASSWD = 'lydkineblendy'
 
 if DB_PROXY:
     HOST = '147.251.124.133'

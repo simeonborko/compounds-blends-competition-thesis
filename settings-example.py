@@ -1,4 +1,5 @@
-DB = 'prod_filtered2'
+DB = 'database-and-user-name'
+PASSWD = 'password'
 DB_PROXY = False
 
 SYNC_OVERVIEW = False
