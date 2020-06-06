@@ -6,6 +6,7 @@ from syllabiky.DbMatcher import DbMatcher
 from src.tools import en
 from src.tools import sk
 from src.tools.exception import WordSegmentException
+from src.tools.overlapable import get_overlapable
 from src.tools.splinter import SlovakGraphicSplinter, SlovakPhoneticSplinter, EnglishGraphicSplinter, \
     EnglishPhoneticSplinter, Overlap, LexshType, parse_lexsh_type
 from src.tools.corpora import SlovakExactCorpus, SlovakSubstringCorpus, EnglishExactCorpus, EnglishSubstringCorpus
@@ -291,7 +292,23 @@ class NamingUnit(Entity):
                             if sp is not None:
                                 res = str(sp)
                 self[f'G_split_point_{N}'] = res
-    
+
+    def __overlapable(self):
+        col_suffix = 'phonetic'
+        if self[f'sw1_{col_suffix}'] != 'NA' and self[f'sw2_{col_suffix}'] != 'NA' \
+                and self[f'sw3_{col_suffix}'] == 'NA' and self[f'sw4_{col_suffix}'] == 'NA':
+            overlapable = get_overlapable(self[f'sw1_{col_suffix}'], self[f'sw2_{col_suffix}'])
+            if overlapable is not None:
+                self['G_overlapable'] = "YES"
+                self['G_overlapable_length'] = overlapable[0]
+                self['G_overlapable_sw1'] = overlapable[1]
+                self['G_overlapable_sw2'] = overlapable[2]
+            else:
+                self['G_overlapable'] = "NO"
+                self['G_overlapable_length'] = None
+                self['G_overlapable_sw1'] = None
+                self['G_overlapable_sw2'] = None
+
     def generate(self):
         self.__nu_syllabic()
         self.__nu_graphic_len()
@@ -302,6 +319,7 @@ class NamingUnit(Entity):
             self.__lexsh()
             self.__overlap()
             self.__split_point_placement()
+        self.__overlapable()
 
 
 class Splinter(Entity):

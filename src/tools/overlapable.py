@@ -160,9 +160,14 @@ def levels_from_sequence(line_idx: int, seq: Tuple[int, int], diamond_to_matrix)
 
 
 def get_overlapable(sw1, sw2) -> Optional[Tuple[int, int, int]]:
+    """
+    Get overlapable.
+    :param sw1: source word 1
+    :param sw2: source word 2
+    :return: sequence length, level for sw1, level for sw2
+    """
     matrix = create_matrix(sw1, sw2)
     diamond, diamond_to_matrix = matrix_to_diamond(matrix)
-    seq = None
     for d_idx, d_line in enumerate(diamond):
         pos = position_in_diamond_line(d_line)
         seq = sequence_in_diamond_line(d_line, *pos)
