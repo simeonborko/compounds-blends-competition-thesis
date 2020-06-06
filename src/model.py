@@ -1116,6 +1116,7 @@ class SplinterView(EditableTableLike):
 
         'overlapping_letters', 'overlapping_phones', 'n_of_overlapping_letters', 'n_of_overlapping_phones',
         'G_overlapping_letters', 'G_overlapping_phones', 'G_n_of_overlapping_letters', 'G_n_of_overlapping_phones',
+        'G_overlapable', 'G_overlapable_length', 'G_overlapable_sw1', 'G_overlapable_sw2',
     )
 
     # ktore stlpce z image tabulky chceme
