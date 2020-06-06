@@ -294,17 +294,32 @@ class NamingUnit(Entity):
                 self[f'G_split_point_{N}'] = res
 
     def __overlapable(self):
-        col_suffix = 'phonetic'
-        if self[f'sw1_{col_suffix}'] != 'NA' and self[f'sw2_{col_suffix}'] != 'NA' \
-                and self[f'sw3_{col_suffix}'] == 'NA' and self[f'sw4_{col_suffix}'] == 'NA':
-            overlapable = get_overlapable(self[f'sw1_{col_suffix}'], self[f'sw2_{col_suffix}'])
-            if overlapable is not None:
-                self['G_overlapable'] = "YES"
-                self['G_overlapable_length'] = overlapable[0]
-                self['G_overlapable_sw1'] = overlapable[1]
-                self['G_overlapable_sw2'] = overlapable[2]
-            else:
-                self['G_overlapable'] = "NO"
+
+        if self.__lang == 'SK':
+            get_phones_list = sk.get_phones_list
+        elif self.__lang == 'EN':
+            get_phones_list = en.get_phones_list
+        else:
+            raise Exception('No language')
+
+        if self['sw1_phonetic'] != 'NA' and self['sw2_phonetic'] != 'NA' \
+                and self['sw3_phonetic'] == 'NA' and self['sw4_phonetic'] == 'NA':
+            try:
+                sw1 = get_phones_list(self['sw1_phonetic'])
+                sw2 = get_phones_list(self['sw2_phonetic'])
+                overlapable = get_overlapable(sw1, sw2)
+                if overlapable is not None:
+                    self['G_overlapable'] = "YES"
+                    self['G_overlapable_length'] = overlapable[0]
+                    self['G_overlapable_sw1'] = overlapable[1] + 1
+                    self['G_overlapable_sw2'] = overlapable[2] + 1
+                else:
+                    self['G_overlapable'] = "NO"
+                    self['G_overlapable_length'] = None
+                    self['G_overlapable_sw1'] = None
+                    self['G_overlapable_sw2'] = None
+            except WordSegmentException:
+                self['G_overlapable'] = "ERROR"
                 self['G_overlapable_length'] = None
                 self['G_overlapable_sw1'] = None
                 self['G_overlapable_sw2'] = None
