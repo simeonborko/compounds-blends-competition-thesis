@@ -24,6 +24,7 @@ NEW = """CREATE OR REPLACE VIEW `nu_full` AS
     `NU`.`nu_graphic_len` AS `nu_graphic_len`,
     `NU`.`nu_phonetic_len` AS `nu_phonetic_len`,
     `NU`.`nu_syllabic_len` AS `nu_syllabic_len`,
+    `NU`.`nu_corpus_frequency` AS `nu_corpus_frequency`,
     `NU`.`sw1_graphic` AS `sw1_graphic`,
     `NU`.`sw2_graphic` AS `sw2_graphic`,
     `NU`.`sw3_graphic` AS `sw3_graphic`,
@@ -175,6 +176,7 @@ NEW = """CREATE OR REPLACE VIEW `nu_full` AS
   )
 """
 
+
 OLD = """CREATE OR REPLACE VIEW `nu_full` AS
   select
     `NU`.`nu_graphic` AS `nu_graphic`,
@@ -196,6 +198,7 @@ OLD = """CREATE OR REPLACE VIEW `nu_full` AS
     `NU`.`nu_graphic_len` AS `nu_graphic_len`,
     `NU`.`nu_phonetic_len` AS `nu_phonetic_len`,
     `NU`.`nu_syllabic_len` AS `nu_syllabic_len`,
+    `NU`.`nu_corpus_frequency` AS `nu_corpus_frequency`,
     `NU`.`sw1_graphic` AS `sw1_graphic`,
     `NU`.`sw2_graphic` AS `sw2_graphic`,
     `NU`.`sw3_graphic` AS `sw3_graphic`,
