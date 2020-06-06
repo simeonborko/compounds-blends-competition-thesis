@@ -304,22 +304,33 @@ class NamingUnit(Entity):
 
         if self['sw1_phonetic'] != 'NA' and self['sw2_phonetic'] != 'NA' \
                 and self['sw3_phonetic'] == 'NA' and self['sw4_phonetic'] == 'NA':
+            sw1 = self['sw1_phonetic']
+            sw2 = self['sw2_phonetic']
+            if sw1 is None or sw2 is None:
+                self['G_overlapable'] = "ERROR NO PHONETIC"
+                self['G_overlapable_length'] = None
+                self['G_overlapable_sw1'] = None
+                self['G_overlapable_sw2'] = None
+                return
+                
             try:
-                sw1 = get_phones_list(self['sw1_phonetic'])
-                sw2 = get_phones_list(self['sw2_phonetic'])
-                overlapable = get_overlapable(sw1, sw2)
-                if overlapable is not None:
-                    self['G_overlapable'] = "YES"
-                    self['G_overlapable_length'] = overlapable[0]
-                    self['G_overlapable_sw1'] = overlapable[1] + 1
-                    self['G_overlapable_sw2'] = overlapable[2] + 1
-                else:
-                    self['G_overlapable'] = "NO"
-                    self['G_overlapable_length'] = None
-                    self['G_overlapable_sw1'] = None
-                    self['G_overlapable_sw2'] = None
+                sw1 = get_phones_list(sw1)
+                sw2 = get_phones_list(sw2)
             except WordSegmentException:
-                self['G_overlapable'] = "ERROR"
+                self['G_overlapable'] = "ERROR BAD PHONETIC"
+                self['G_overlapable_length'] = None
+                self['G_overlapable_sw1'] = None
+                self['G_overlapable_sw2'] = None
+                return 
+                
+            overlapable = get_overlapable(sw1, sw2)
+            if overlapable is not None:
+                self['G_overlapable'] = "YES"
+                self['G_overlapable_length'] = overlapable[0]
+                self['G_overlapable_sw1'] = overlapable[1] + 1
+                self['G_overlapable_sw2'] = overlapable[2] + 1
+            else:
+                self['G_overlapable'] = "NO"
                 self['G_overlapable_length'] = None
                 self['G_overlapable_sw1'] = None
                 self['G_overlapable_sw2'] = None
