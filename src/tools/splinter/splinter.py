@@ -112,15 +112,28 @@ class Splinter:
         aligns = []
         for sw_start in range(len(self.__sourceword)):
             for nu_start in range(len(self.__namingunit)):
-                for sw_stop in range(sw_start+1, len(self.__sourceword)+1):
-                    for nu_stop in range(nu_start+1, len(self.__namingunit)+1):
-                        aligns.append(Alignment(
-                            self.__namingunit,
-                            self.__sourceword,
-                            range(nu_start, nu_stop),
-                            range(sw_start, sw_stop),
-                            self.__namingunit_orig
-                        ))
+                # maximalna dlzka zarovnania
+                max_len = min(len(self.__sourceword) - sw_start, len(self.__namingunit) - nu_start)
+                prev_align = None
+                for curr_len in range(1, max_len + 1):
+                    align = Alignment(
+                        self.__namingunit,
+                        self.__sourceword,
+                        range(nu_start, nu_start + curr_len),
+                        range(sw_start, sw_start + curr_len),
+                        self.__namingunit_orig
+                    )
+                    if align.score == 0:
+                        break
+                    if prev_align is None:
+                        aligns.append(align)
+                    elif align.score > prev_align.score:
+                        aligns.pop()
+                        aligns.append(align)
+                    else:
+                        break
+                    prev_align = align
+
         return aligns
 
     def find_splinter(self) -> bool:
