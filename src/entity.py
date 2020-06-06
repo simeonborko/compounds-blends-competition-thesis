@@ -118,6 +118,8 @@ class SourceWord(Entity):
 
 class NamingUnit(Entity):
 
+    CORPUS_SK: Optional[SlovakExactCorpus] = None  # corpus ma nastavit volajuci
+    CORPUS_EN: Optional[EnglishExactCorpus] = None  # ma nastavit volajuci
     SPLINTER_DERIVED: Optional[bool] = None  # SPLINTER_DERIVED ma nastavit volajuci
     __MATCHER = DbMatcher()
 
@@ -161,6 +163,12 @@ class NamingUnit(Entity):
         elif self.__lang == 'EN' and self['nu_phonetic']:
             newval = en.count_syllables(self['nu_phonetic'])
         self['G_nu_syllabic_len'] = newval
+        
+    def __nu_corpus_frequency(self):
+        if self.__lang == 'SK' and self.CORPUS_SK is not None:
+            self['nu_corpus_frequency'] = self.CORPUS_SK.get_frequency(self['nu_graphic'])
+        elif self.__lang == 'EN' and self.CORPUS_EN is not None:
+            self['nu_corpus_frequency'] = self.CORPUS_EN.get_frequency(self['nu_graphic'])
 
     def __lexsh(self):
 
@@ -283,12 +291,13 @@ class NamingUnit(Entity):
                             if sp is not None:
                                 res = str(sp)
                 self[f'G_split_point_{N}'] = res
-
+    
     def generate(self):
         self.__nu_syllabic()
         self.__nu_graphic_len()
         self.__nu_phonetic_len()
         self.__nu_syllabic_len()
+        self.__nu_corpus_frequency()
         if self.SPLINTER_DERIVED:
             self.__lexsh()
             self.__overlap()

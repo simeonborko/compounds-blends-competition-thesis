@@ -239,6 +239,7 @@ class Overview(StaticView):
         'nu_graphic_len',
         'nu_phonetic_len',
         'nu_syllabic_len',
+        'nu_corpus_frequency',
         'sw1_graphic',
         'sw2_graphic',
         'sw3_graphic',
@@ -668,7 +669,8 @@ class NamingUnitTable(Table):
 
     _NAME = 'naming_unit'
 
-    _EXCLUDE_EDITABLE = set(__FROM_SW_A) | set(__FROM_SW_B) | set(__FROM_IMG)
+    __FROM_OTHER_TABLES = set(__FROM_SW_A) | set(__FROM_SW_B) | set(__FROM_IMG)
+    _EXCLUDE_EDITABLE = __FROM_OTHER_TABLES | {'nu_corpus_frequency'}
     _EXCLUDE_GENERATED = _EXCLUDE_EDITABLE
     __EXCLUDE_FROM_JUNK = _EXCLUDE_EDITABLE
 
@@ -692,6 +694,7 @@ class NamingUnitTable(Table):
         'nu_graphic_len', 'G_nu_graphic_len',
         'nu_phonetic_len', 'G_nu_phonetic_len',
         'nu_syllabic_len', 'G_nu_syllabic_len',
+        'nu_corpus_frequency',
         # 'lexsh_main', 'G_lexsh_main', 'G_lexsh_main__ignore', 'lexsh_sm', 'G_lexsh_sm', 'G_lexsh_sm__ignore',
         # 'lexsh_whatm', 'G_lexsh_whatm', 'G_lexsh_whatm__ignore',
         # 'split_point_1', 'G_split_point_1', 'split_point_2', 'G_split_point_2', 'split_point_3', 'G_split_point_3'
@@ -867,6 +870,14 @@ class NamingUnitTable(Table):
 
         with ExitStack() as stack:
 
+            if kwargs['corpus']:
+                stack.enter_context(entity_resource_context_manager(
+                    SlovakExactCorpus, NamingUnit, 'CORPUS_SK'
+                ))
+            if kwargs['bnc_corpus']:
+                stack.enter_context(entity_resource_context_manager(
+                    EnglishExactCorpus, NamingUnit, 'CORPUS_EN'
+                ))
             if kwargs['splinter_derived']:
                 stack.enter_context(entity_simple_context_manager(
                     True, NamingUnit, 'SPLINTER_DERIVED'
