@@ -360,6 +360,10 @@ class Overview(StaticView):
         'overlapping_phones',
         'n_of_overlapping_letters',
         'n_of_overlapping_phones',
+        'overlapable',
+        'overlapable_length',
+        'overlapable_sw1',
+        'overlapable_sw2',
     )
 
     _EXPORT_SELECT = """SELECT {} FROM (
@@ -717,6 +721,7 @@ class NamingUnitTable(Table):
         'G_lexsh_main', 'G_lexsh_sm', 'G_lexsh_whatm',
         'G_split_point_1', 'G_split_point_2', 'G_split_point_3',
         'G_overlapping_letters', 'G_overlapping_phones', 'G_n_of_overlapping_letters', 'G_n_of_overlapping_phones',
+        'G_overlapable', 'G_overlapable_length', 'G_overlapable_sw1', 'G_overlapable_sw2',
     }
 
     _PRIMARY = 4
@@ -1111,6 +1116,7 @@ class SplinterView(EditableTableLike):
 
         'overlapping_letters', 'overlapping_phones', 'n_of_overlapping_letters', 'n_of_overlapping_phones',
         'G_overlapping_letters', 'G_overlapping_phones', 'G_n_of_overlapping_letters', 'G_n_of_overlapping_phones',
+        'G_overlapable', 'G_overlapable_length', 'G_overlapable_sw1', 'G_overlapable_sw2',
     )
 
     # ktore stlpce z image tabulky chceme

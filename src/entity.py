@@ -6,6 +6,7 @@ from syllabiky.DbMatcher import DbMatcher
 from src.tools import en
 from src.tools import sk
 from src.tools.exception import WordSegmentException
+from src.tools.overlapable import get_overlapable
 from src.tools.splinter import SlovakGraphicSplinter, SlovakPhoneticSplinter, EnglishGraphicSplinter, \
     EnglishPhoneticSplinter, Overlap, LexshType, parse_lexsh_type
 from src.tools.corpora import SlovakExactCorpus, SlovakSubstringCorpus, EnglishExactCorpus, EnglishSubstringCorpus
@@ -291,7 +292,49 @@ class NamingUnit(Entity):
                             if sp is not None:
                                 res = str(sp)
                 self[f'G_split_point_{N}'] = res
-    
+
+    def __overlapable(self):
+
+        if self.__lang == 'SK':
+            get_phones_list = sk.get_phones_list
+        elif self.__lang == 'EN':
+            get_phones_list = en.get_phones_list
+        else:
+            raise Exception('No language')
+
+        if self['sw1_phonetic'] != 'NA' and self['sw2_phonetic'] != 'NA' \
+                and self['sw3_phonetic'] == 'NA' and self['sw4_phonetic'] == 'NA':
+            sw1 = self['sw1_phonetic']
+            sw2 = self['sw2_phonetic']
+            if sw1 is None or sw2 is None:
+                self['G_overlapable'] = "ERROR NO PHONETIC"
+                self['G_overlapable_length'] = None
+                self['G_overlapable_sw1'] = None
+                self['G_overlapable_sw2'] = None
+                return
+                
+            try:
+                sw1 = get_phones_list(sw1)
+                sw2 = get_phones_list(sw2)
+            except WordSegmentException:
+                self['G_overlapable'] = "ERROR BAD PHONETIC"
+                self['G_overlapable_length'] = None
+                self['G_overlapable_sw1'] = None
+                self['G_overlapable_sw2'] = None
+                return 
+                
+            overlapable = get_overlapable(sw1, sw2)
+            if overlapable is not None:
+                self['G_overlapable'] = "YES"
+                self['G_overlapable_length'] = overlapable[0]
+                self['G_overlapable_sw1'] = overlapable[1] + 1
+                self['G_overlapable_sw2'] = overlapable[2] + 1
+            else:
+                self['G_overlapable'] = "NO"
+                self['G_overlapable_length'] = None
+                self['G_overlapable_sw1'] = None
+                self['G_overlapable_sw2'] = None
+
     def generate(self):
         self.__nu_syllabic()
         self.__nu_graphic_len()
@@ -302,6 +345,7 @@ class NamingUnit(Entity):
             self.__lexsh()
             self.__overlap()
             self.__split_point_placement()
+        self.__overlapable()
 
 
 class Splinter(Entity):
