@@ -674,7 +674,7 @@ class NamingUnitTable(Table):
     _NAME = 'naming_unit'
 
     __FROM_OTHER_TABLES = set(__FROM_SW_A) | set(__FROM_SW_B) | set(__FROM_IMG)
-    _EXCLUDE_EDITABLE = __FROM_OTHER_TABLES | {'nu_corpus_frequency'}
+    _EXCLUDE_EDITABLE = __FROM_OTHER_TABLES
     _EXCLUDE_GENERATED = _EXCLUDE_EDITABLE
     __EXCLUDE_FROM_JUNK = _EXCLUDE_EDITABLE
 
@@ -698,7 +698,7 @@ class NamingUnitTable(Table):
         'nu_graphic_len', 'G_nu_graphic_len',
         'nu_phonetic_len', 'G_nu_phonetic_len',
         'nu_syllabic_len', 'G_nu_syllabic_len',
-        'nu_corpus_frequency',
+        'G_nu_corpus_frequency',
         # 'lexsh_main', 'G_lexsh_main', 'G_lexsh_main__ignore', 'lexsh_sm', 'G_lexsh_sm', 'G_lexsh_sm__ignore',
         # 'lexsh_whatm', 'G_lexsh_whatm', 'G_lexsh_whatm__ignore',
         # 'split_point_1', 'G_split_point_1', 'split_point_2', 'G_split_point_2', 'split_point_3', 'G_split_point_3'

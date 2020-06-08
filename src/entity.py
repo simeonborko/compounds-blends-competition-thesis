@@ -167,9 +167,9 @@ class NamingUnit(Entity):
         
     def __nu_corpus_frequency(self):
         if self.__lang == 'SK' and self.CORPUS_SK is not None:
-            self['nu_corpus_frequency'] = self.CORPUS_SK.get_frequency(self['nu_graphic'])
+            self['G_nu_corpus_frequency'] = self.CORPUS_SK.get_frequency(self['nu_graphic'])
         elif self.__lang == 'EN' and self.CORPUS_EN is not None:
-            self['nu_corpus_frequency'] = self.CORPUS_EN.get_frequency(self['nu_graphic'])
+            self['G_nu_corpus_frequency'] = self.CORPUS_EN.get_frequency(self['nu_graphic'])
 
     def __lexsh(self):
 
