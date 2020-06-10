@@ -63,8 +63,8 @@ class SourceWord(Entity):
         self.__lang = self['survey_language']
 
     def __sw_phonetic(self):
-        if self.__lang == 'EN' and self.TRANSCRIPTION_MANAGER is not None:
-            self['G_sw_phonetic'] = self.TRANSCRIPTION_MANAGER[self['sw_graphic']]
+        if self.TRANSCRIPTION_MANAGER is not None:
+            self['G_sw_phonetic'] = self.TRANSCRIPTION_MANAGER[self['sw_graphic']] if self.__lang == 'EN' else 'NA'
 
     def __sw_syllabic(self):
         if self.__lang == 'SK':
@@ -73,7 +73,9 @@ class SourceWord(Entity):
                 newval = split_phrase(self['sw_graphic'], self.__MATCHER)
             except TypeError:
                 print("TypeError split_phrase:", self['sw_graphic'])
-            self['G_sw_syllabic'] = newval
+        else:
+            newval = 'NA'
+        self['G_sw_syllabic'] = newval
 
     def __sw_graphic_len(self):
         if self.__lang == 'SK':
@@ -137,7 +139,9 @@ class NamingUnit(Entity):
                 newval = split_phrase(self['nu_graphic'], self.__MATCHER)
             except TypeError:
                 print("TypeError split_phrase:", self['nu_graphic'])
-            self['G_nu_syllabic'] = newval
+        else:
+            newval = 'NA'
+        self['G_nu_syllabic'] = newval
 
     def __nu_graphic_len(self):
         if self.__lang == 'SK':
