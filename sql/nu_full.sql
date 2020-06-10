@@ -8,10 +8,10 @@ CREATE OR REPLACE VIEW `nu_full` AS
     NU.wfp_strict_modification as wfp_strict_modification,
     NU.connect_element as connect_element,
     NU.what_connect_element as what_connect_element,
-    NU.dom_half as dom_half,
     `NU`.`image_id` AS `image_id`,
     NU.nu_source_language AS nu_source_language,
     NU.nu_number_of_SWs,
+    NU.nu_word_class_comb,
     NU.nu_OT,
     NU.nu_TT,
     `NU`.`nu_phonetic` AS `nu_phonetic`,
@@ -19,6 +19,7 @@ CREATE OR REPLACE VIEW `nu_full` AS
     `NU`.`nu_graphic_len` AS `nu_graphic_len`,
     `NU`.`nu_phonetic_len` AS `nu_phonetic_len`,
     `NU`.`nu_syllabic_len` AS `nu_syllabic_len`,
+    `NU`.`G_nu_corpus_frequency` AS `nu_corpus_frequency`,
     `NU`.`sw1_graphic` AS `sw1_graphic`,
     `NU`.`sw2_graphic` AS `sw2_graphic`,
     `NU`.`sw3_graphic` AS `sw3_graphic`,
@@ -138,7 +139,11 @@ CREATE OR REPLACE VIEW `nu_full` AS
     NU.overlapping_letters AS overlapping_letters,
     NU.overlapping_phones AS overlapping_phones,
     NU.n_of_overlapping_letters AS n_of_overlapping_letters,
-    NU.n_of_overlapping_phones AS n_of_overlapping_phones
+    NU.n_of_overlapping_phones AS n_of_overlapping_phones,
+    NU.G_overlapable AS overlapable,
+    NU.G_overlapable_length AS overlapable_length,
+    NU.G_overlapable_sw1 AS overlapable_sw1,
+    NU.G_overlapable_sw2 AS overlapable_sw2
   from (
       (
           (
