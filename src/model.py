@@ -234,7 +234,6 @@ class Overview(StaticView):
         'wfp_strict_modification',
         'connect_element',
         'what_connect_element',
-        'dom_half',
         'age',
         'sex',
         'first_language',
@@ -691,7 +690,7 @@ class NamingUnitTable(Table):
         'nu_word_class_comb',
         'nu_OT', 'nu_TT',
         'wf_process', 'wfp_specification', 'wfp_strict_modification',
-        'connect_element', 'what_connect_element', 'dom_half',
+        'connect_element', 'what_connect_element',
 
         'sw1_graphic', 'sw2_graphic', 'sw3_graphic', 'sw4_graphic',
         *__FROM_SW_A,
