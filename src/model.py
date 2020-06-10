@@ -115,6 +115,17 @@ class TableLike(ABC):
     def _same_fill(cell: Cell, fill: PatternFill) -> bool:
         return cell.fill == fill or cell.fill.fgColor == fill.fgColor
 
+    @staticmethod
+    def _joined_column_sql(editable, generated, joined):
+        """
+        Podmieneny stlpec pre SQL select. Ak je editable vyplneny, pouzije sa editable, inak generated.
+        :param editable:  upravovatelny stlpec
+        :param generated: generovany stlpec
+        :param joined:    nazov spojeneho stlpca
+        :return: stlpec pre SQL select
+        """
+        return f"IF({editable} IS NULL OR {editable} = '', {generated}, {editable}) AS {joined}"
+
     def create_sheet(self) -> bool:
         if self.sheet_created:
             return False
@@ -421,7 +432,7 @@ class EditableTableLike(TableLike):
 
     @staticmethod
     def __looks_like_generated(field) -> bool:
-        return field[:2] == 'G_' and field[-8:] != '__ignore'
+        return field[:2] in ('G_', 'J_') and field[-8:] != '__ignore'
 
     def __is_generated(self, field) -> Optional[bool]:
         """
@@ -699,7 +710,9 @@ class NamingUnitTable(Table):
         'nu_number_of_SWs',
         'nu_word_class_comb',
         'nu_OT', 'nu_TT',
-        'wf_process', 'wfp_specification', 'wfp_strict_modification',
+        'wf_process', 'wfp_specification',
+        'J_lexsh_main', 'J_lexsh_sm', 'J_lexsh_whatm',
+        'wfp_strict_modification',
         'connect_element', 'what_connect_element',
 
         'sw1_graphic', 'sw2_graphic', 'sw3_graphic', 'sw4_graphic',
@@ -715,8 +728,6 @@ class NamingUnitTable(Table):
         'nu_phonetic_len', 'G_nu_phonetic_len',
         'nu_syllabic_len', 'G_nu_syllabic_len',
         'G_nu_corpus_frequency',
-        # 'lexsh_main', 'G_lexsh_main', 'G_lexsh_main__ignore', 'lexsh_sm', 'G_lexsh_sm', 'G_lexsh_sm__ignore',
-        # 'lexsh_whatm', 'G_lexsh_whatm', 'G_lexsh_whatm__ignore',
         # 'split_point_1', 'G_split_point_1', 'split_point_2', 'G_split_point_2', 'split_point_3', 'G_split_point_3'
     )
 
@@ -724,6 +735,8 @@ class NamingUnitTable(Table):
     # - su v databaze v tabulke naming_unit,
     # - generuju sa v tejto triede (NamingUnitTable),
     # - ale zobrazuju sa az v harku Splinter View.
+    # Doplnenie:
+    # - Lexical shortening sa zobrazuje aj v NamingUnitTable v spojenej forme s prefixom J_.
 
     _HIDDEN_BUT_EDITABLE = {
         'lexsh_main', 'G_lexsh_main__ignore',
@@ -839,9 +852,12 @@ class NamingUnitTable(Table):
     def __init__(self, wb: Workbook, conn, as_affected: bool = False):
         super().__init__(wb, conn, as_affected)
 
-        # stlpce, ktore budu v selecte
+        # stlpce, ktore budu v pomocnom selecte
         sel_fields = [
             "NU.*",
+            self._joined_column_sql(editable='NU.lexsh_main',  generated='NU.G_lexsh_main',  joined='J_lexsh_main'),
+            self._joined_column_sql(editable='NU.lexsh_sm',    generated='NU.G_lexsh_sm',    joined='J_lexsh_sm'),
+            self._joined_column_sql(editable='NU.lexsh_whatm', generated='NU.G_lexsh_whatm', joined='J_lexsh_whatm'),
             "`SW1`.`sw_phonetic`     AS `sw1_phonetic`",
             "`SW2`.`sw_phonetic`     AS `sw2_phonetic`",
             "`SW3`.`sw_phonetic`     AS `sw3_phonetic`",
