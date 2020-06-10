@@ -867,9 +867,6 @@ class NamingUnitTable(Table):
         # stlpce, ktore budu v pomocnom selecte
         sel_fields = [
             "NU.*",
-            self._joined_column_sql(editable='NU.lexsh_main',  generated='NU.G_lexsh_main',  joined='J_lexsh_main'),
-            self._joined_column_sql(editable='NU.lexsh_sm',    generated='NU.G_lexsh_sm',    joined='J_lexsh_sm'),
-            self._joined_column_sql(editable='NU.lexsh_whatm', generated='NU.G_lexsh_whatm', joined='J_lexsh_whatm'),
             "`SW1`.`sw_phonetic`     AS `sw1_phonetic`",
             "`SW2`.`sw_phonetic`     AS `sw2_phonetic`",
             "`SW3`.`sw_phonetic`     AS `sw3_phonetic`",
@@ -1149,10 +1146,10 @@ class SplinterView(EditableTableLike):
         'wf_process', 'wfp_specification',
         'wfp_strict_modification', 'connect_element',
         'nu_phonetic',
-        'nu_syllabic',
-        'nu_graphic_len',
-        'nu_phonetic_len',
-        'nu_syllabic_len',
+        'J_nu_syllabic',
+        'J_nu_graphic_len',
+        'J_nu_phonetic_len',
+        'J_nu_syllabic_len',
 
         'lexsh_main', 'lexsh_sm', 'lexsh_whatm',
         'G_lexsh_main', 'G_lexsh_sm', 'G_lexsh_whatm',

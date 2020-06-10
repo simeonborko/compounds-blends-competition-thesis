@@ -101,7 +101,7 @@ class SplinterViewFieldManager:
 
     @cached_property
     def static_fields(self) -> Set[str]:
-        """Tieto stlpce sa nebudu editovat"""
+        """Tieto stlpce sa nebudu editovat. Tato mnozina moze byt este upravena, tak pozri presne pouzitie."""
         fields = set()
         fields.update(self.flat_fields_naming_unit)
         fields.update(self.flat_fields_image)
