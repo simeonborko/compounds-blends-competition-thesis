@@ -9,7 +9,10 @@ from cached_property import cached_property
 from openpyxl import Workbook
 from openpyxl.cell import Cell
 from openpyxl.styles import Font, PatternFill
-from openpyxl.worksheet import Worksheet
+try:
+    from openpyxl.worksheet import Worksheet
+except ImportError:
+    from openpyxl.worksheet.worksheet import Worksheet
 from pymysql.cursors import DictCursor
 
 from src import configuration, temp_table, table_generate
