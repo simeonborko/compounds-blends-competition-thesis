@@ -431,8 +431,18 @@ class EditableTableLike(TableLike):
         self.__editable, self.__generated, self.__neither_editable_nor_generated = self.__split_fields()
 
     @staticmethod
-    def __looks_like_generated(field) -> bool:
-        return field[:2] in ('G_', 'J_') and field[-8:] != '__ignore'
+    def __looks_like_generated(field) -> Optional[bool]:
+        prefix = field[:2]
+        if prefix == 'G_' and field[-8:] != '__ignore':
+            # field je generovany
+            return True
+        elif prefix == 'J_':
+            # field nie je ani generovany ani upravovany
+            # J_ je pre stlpce ktore vznikli spojenim upravovatelneho a generovaneho stlpca
+            return None
+        else:
+            # field je upravovatelny
+            return False
 
     def __is_generated(self, field) -> Optional[bool]:
         """
