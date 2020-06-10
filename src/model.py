@@ -18,7 +18,7 @@ from pymysql.cursors import DictCursor
 from src import configuration, temp_table, table_generate
 from src.entity import SourceWord, NamingUnit, Splinter
 from src.splinter_view_field_manager import SplinterViewFieldManager
-from src.tools import en, entity_resource_context_manager, entity_simple_context_manager
+from src.tools import en, entity_resource_context_manager, entity_simple_context_manager, joined_column_sql
 from src.tools.corpora import SlovakExactCorpus, SlovakSubstringCorpus, EnglishExactCorpus, EnglishSubstringCorpus
 from src.tools.exception import ResponseDuplicatesException, ResponseTypeError
 
@@ -114,19 +114,6 @@ class TableLike(ABC):
     @staticmethod
     def _same_fill(cell: Cell, fill: PatternFill) -> bool:
         return cell.fill == fill or cell.fill.fgColor == fill.fgColor
-
-    @staticmethod
-    def _joined_column_sql(editable, generated, joined):
-        """
-        Podmieneny stlpec pre SQL select.
-        Primarne sa pouzije editable (ak je vyplneny).
-        Ak je generated = 'NA', nemoze sa pouzit.
-        :param editable:  upravovatelny stlpec
-        :param generated: generovany stlpec
-        :param joined:    nazov spojeneho stlpca
-        :return: stlpec pre SQL select
-        """
-        return f"IF({editable} IS NOT NULL AND {editable} != '' OR {generated} = 'NA', {editable}, {generated}) AS {joined}"
 
     def create_sheet(self) -> bool:
         if self.sheet_created:
@@ -867,9 +854,9 @@ class NamingUnitTable(Table):
         # stlpce, ktore budu v pomocnom selecte
         sel_fields = [
             "NU.*",
-            self._joined_column_sql(editable='NU.lexsh_main',  generated='NU.G_lexsh_main',  joined='J_lexsh_main'),
-            self._joined_column_sql(editable='NU.lexsh_sm',    generated='NU.G_lexsh_sm',    joined='J_lexsh_sm'),
-            self._joined_column_sql(editable='NU.lexsh_whatm', generated='NU.G_lexsh_whatm', joined='J_lexsh_whatm'),
+            joined_column_sql(editable='NU.lexsh_main',  generated='NU.G_lexsh_main',  joined='J_lexsh_main'),
+            joined_column_sql(editable='NU.lexsh_sm',    generated='NU.G_lexsh_sm',    joined='J_lexsh_sm'),
+            joined_column_sql(editable='NU.lexsh_whatm', generated='NU.G_lexsh_whatm', joined='J_lexsh_whatm'),
             "`SW1`.`sw_phonetic`     AS `sw1_phonetic`",
             "`SW2`.`sw_phonetic`     AS `sw2_phonetic`",
             "`SW3`.`sw_phonetic`     AS `sw3_phonetic`",
@@ -1219,7 +1206,7 @@ class SplinterView(EditableTableLike):
     def __init__(self, wb, conn, as_affected: bool = False):
 
         self.__field_manager = SplinterViewFieldManager(
-            self.__NU_FIELDS, self.__IMG_FIELDS, self.__SW_FIELDS, self.__SPL_FIELDS, self.__SPL_TYPES
+            self.__NU_FIELDS, set(), self.__IMG_FIELDS, self.__SW_FIELDS, self.__SPL_FIELDS, self.__SPL_TYPES
         )
 
         self._FIELDS = self.__field_manager.flat_fields

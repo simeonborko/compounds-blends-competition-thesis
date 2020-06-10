@@ -92,6 +92,20 @@ def get_lang2code(cursor: iter) -> dict:
     return dict(cursor)
 
 
+def joined_column_sql(editable, generated, joined=None) -> str:
+    """
+    Podmieneny stlpec pre SQL select.
+    Primarne sa pouzije editable (ak je vyplneny).
+    Ak je generated = 'NA', nemoze sa pouzit.
+    :param editable:  upravovatelny stlpec
+    :param generated: generovany stlpec
+    :param joined:    nazov spojeneho stlpca
+    :return: stlpec pre SQL select alebo selektor ak nie je zadany joined
+    """
+    selector = f"IF({editable} IS NOT NULL AND {editable} != '' OR {generated} = 'NA', {editable}, {generated})"
+    return f'{selector} AS {joined}' if joined is not None else selector
+
+
 class Table:
     def __init__(self, key_fields: iter, other_fields: iter):
         self.key_fields = tuple(key_fields)

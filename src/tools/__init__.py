@@ -1,4 +1,4 @@
-from .tools import Connection, CorpConnection, CambridgeConnection
+from .tools import Connection, CorpConnection, CambridgeConnection, joined_column_sql
 from .splinter import splinter
 from .sequential_preload_common import sequential_preload_common
 from .entity_context_manager import entity_resource_context_manager, entity_simple_context_manager
