@@ -118,13 +118,15 @@ class TableLike(ABC):
     @staticmethod
     def _joined_column_sql(editable, generated, joined):
         """
-        Podmieneny stlpec pre SQL select. Ak je editable vyplneny, pouzije sa editable, inak generated.
+        Podmieneny stlpec pre SQL select.
+        Primarne sa pouzije editable (ak je vyplneny).
+        Ak je generated = 'NA', nemoze sa pouzit.
         :param editable:  upravovatelny stlpec
         :param generated: generovany stlpec
         :param joined:    nazov spojeneho stlpca
         :return: stlpec pre SQL select
         """
-        return f"IF({editable} IS NULL OR {editable} = '', {generated}, {editable}) AS {joined}"
+        return f"IF({editable} IS NOT NULL AND {editable} != '' OR {generated} = 'NA', {editable}, {generated}) AS {joined}"
 
     def create_sheet(self) -> bool:
         if self.sheet_created:
