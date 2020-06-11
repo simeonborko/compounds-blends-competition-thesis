@@ -77,7 +77,8 @@ class TableLike(ABC):
         for i in indices:
             db_val = db_values[i]
             sh_val = sheet_cells[i].value
-            if db_val != sh_val:
+            if db_val != sh_val and (db_val or sh_val):
+                # db_val je rozne od sh_val a zaroven su obe neprazdne (nie su None ani prazdny retazec)
                 # print(sh_val, type(sh_val), db_val, type(db_val), sep='\t')
                 sheet_cells[i].value = db_val
                 sheet_cells[i].fill = self._YELLOWFILL
