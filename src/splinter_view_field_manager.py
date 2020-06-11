@@ -38,9 +38,12 @@ class SplinterViewFieldManager:
     def __sw_original_to_current(field: str, sw_number: int):
         if field.startswith('G_'):
             raise Exception('There should be no generated fields')
+        jflag = field.startswith('J_')
+        if jflag:
+            field = field[2:]
         if field.startswith('sw_'):
             field = field[3:]
-        return 'sw{}_{}'.format(sw_number, field)
+        return ('J_sw{}_{}' if jflag else 'sw{}_{}').format(sw_number, field)
 
     @staticmethod
     def __spl_original_to_current(field: str, spl_type):
@@ -101,7 +104,7 @@ class SplinterViewFieldManager:
 
     @cached_property
     def static_fields(self) -> Set[str]:
-        """Tieto stlpce sa nebudu editovat"""
+        """Tieto stlpce sa nebudu editovat. Tato mnozina moze byt este upravena, tak pozri presne pouzitie."""
         fields = set()
         fields.update(self.flat_fields_naming_unit)
         fields.update(self.flat_fields_image)
