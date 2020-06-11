@@ -442,7 +442,7 @@ class EditableTableLike(TableLike):
     @staticmethod
     def __looks_like_generated(field) -> Optional[bool]:
         prefix = field[:2]
-        if prefix == 'G_' and field[-8:] != '__ignore':
+        if prefix == 'G_':
             # field je generovany
             return True
         elif prefix == 'J_':
@@ -742,7 +742,6 @@ class NamingUnitTable(Table):
         'nu_phonetic',
         *__FROM_SW_B,
         'nu_syllabic', 'G_nu_syllabic',
-        # 'G_nu_syllabic__ignore',
         'nu_graphic_len', 'G_nu_graphic_len',
         'nu_phonetic_len', 'G_nu_phonetic_len',
         'nu_syllabic_len', 'G_nu_syllabic_len',
@@ -758,9 +757,7 @@ class NamingUnitTable(Table):
     # - Lexical shortening sa zobrazuje aj v NamingUnitTable v spojenej forme s prefixom J_.
 
     _HIDDEN_BUT_EDITABLE = {
-        'lexsh_main', 'G_lexsh_main__ignore',
-        'lexsh_sm', 'G_lexsh_sm__ignore',
-        'lexsh_whatm', 'G_lexsh_whatm__ignore',
+        'lexsh_main', 'lexsh_sm', 'lexsh_whatm',
         'split_point_1', 'split_point_2', 'split_point_3',
         'overlapping_letters', 'overlapping_phones', 'n_overlapping_letters', 'n_overlapping_phones',
     }
@@ -960,7 +957,7 @@ class SourceWordTable(Table):
     _FIELDS = ('sw_graphic', 'first_language', 'survey_language',
                'source_language', 'proper_name', 'sw_phonetic', 'G_sw_phonetic', 'sw_word_class',
                'established_derived', 'structure',
-               'sw_syllabic', 'G_sw_syllabic', 'G_sw_syllabic__ignore',
+               'sw_syllabic', 'G_sw_syllabic',
                'sw_graphic_len', 'G_sw_graphic_len',
                'sw_phonetic_len', 'G_sw_phonetic_len',
                'sw_syllabic_len', 'G_sw_syllabic_len', 'frequency_in_snc')
@@ -1009,13 +1006,13 @@ class SourceWordTable(Table):
 
 class SplinterTable(Table):
     _NAME = 'splinter'
-    _FIELDS = ('nu_graphic', 'first_language', 'survey_language', 'image_id', 'type_of_splinter',
-               'sw1_splinter', 'sw2_splinter', 'sw3_splinter', 'sw4_splinter',
-               'sw1_splinter_len', 'sw2_splinter_len', 'sw3_splinter_len', 'sw4_splinter_len',
-               'G_sw1_splinter', 'G_sw1_splinter__ignore', 'G_sw2_splinter', 'G_sw2_splinter__ignore',
-               'G_sw3_splinter', 'G_sw3_splinter__ignore', 'G_sw4_splinter', 'G_sw4_splinter__ignore',
-               'G_sw1_splinter_len', 'G_sw1_splinter_len__ignore', 'G_sw2_splinter_len', 'G_sw2_splinter_len__ignore',
-               'G_sw3_splinter_len', 'G_sw3_splinter_len__ignore', 'G_sw4_splinter_len', 'G_sw4_splinter_len__ignore')
+    _FIELDS = (
+        'nu_graphic', 'first_language', 'survey_language', 'image_id', 'type_of_splinter',
+        'sw1_splinter', 'sw2_splinter', 'sw3_splinter', 'sw4_splinter',
+        'sw1_splinter_len', 'sw2_splinter_len', 'sw3_splinter_len', 'sw4_splinter_len',
+        'G_sw1_splinter', 'G_sw2_splinter', 'G_sw3_splinter', 'G_sw4_splinter',
+        'G_sw1_splinter_len', 'G_sw2_splinter_len', 'G_sw3_splinter_len', 'G_sw4_splinter_len'
+    )
     _PRIMARY = 5
 
     __FREQ_COLUMNS = {
@@ -1200,21 +1197,13 @@ class SplinterView(EditableTableLike):
         'sw1_splinter_freq_exact', 'sw2_splinter_freq_exact', 'sw3_splinter_freq_exact', 'sw4_splinter_freq_exact',
         'sw1_splinter_freq_any', 'sw2_splinter_freq_any', 'sw3_splinter_freq_any', 'sw4_splinter_freq_any',
         'G_sw1_splinter',
-        # 'G_sw1_splinter__ignore',
         'G_sw2_splinter',
-        # 'G_sw2_splinter__ignore',
         'G_sw3_splinter',
-        # 'G_sw3_splinter__ignore',
         'G_sw4_splinter',
-        # 'G_sw4_splinter__ignore',
         'G_sw1_splinter_len',
-        # 'G_sw1_splinter_len__ignore',
         'G_sw2_splinter_len',
-        # 'G_sw2_splinter_len__ignore',
         'G_sw3_splinter_len',
-        # 'G_sw3_splinter_len__ignore',
         'G_sw4_splinter_len',
-        # 'G_sw4_splinter_len__ignore'
     )
 
     # typy splintrov
