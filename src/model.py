@@ -1179,10 +1179,10 @@ class SplinterView(EditableTableLike):
     # ktore stlpce zo source_word maju byt pri kazdom zdrojovom slove
     __SW_FIELDS = (
         'sw_graphic', 'source_language',
-        'sw_phonetic', 'sw_word_class',
+        'J_sw_phonetic', 'sw_word_class',
         'established_derived', 'structure',
-        'sw_syllabic',
-        'sw_graphic_len', 'sw_phonetic_len', 'sw_syllabic_len',
+        'J_sw_syllabic',
+        'J_sw_graphic_len', 'J_sw_phonetic_len', 'J_sw_syllabic_len',
     )
 
     # ktore stlpce zo splinter chceme pre kazdy splinter
