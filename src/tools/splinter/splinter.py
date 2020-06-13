@@ -163,6 +163,19 @@ class Splinter:
         self.__alignment = next(filter(lambda align: align.splinter == splinter, self.__all_alignments()), None)
         return self.__alignment is not None
 
+    def set_splinter_preferably(self, preferred: Sequence, alternative: Sequence) -> (bool, Sequence, bool):
+        """
+        Nastav splinter, bud preferovany alebo alternativny, ak nie je mozne nastavit preferovany.
+        :param preferred: preferovany splinter
+        :param alternative: alternativny splinter
+        :return: (bol nastaveny nejaky splinter?, hodnota pouziteho splintra, bol pouzity alternativny?)
+        """
+        result = self.set_splinter(preferred)
+        preferred_used = result
+        if not preferred_used:
+            result = self.set_splinter(alternative)
+        return result, preferred if preferred_used else alternative, not preferred_used
+
     @property
     def alignment(self) -> Optional[Alignment]:
         return self.__alignment

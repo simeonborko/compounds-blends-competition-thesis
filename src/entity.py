@@ -1,5 +1,5 @@
 from abc import abstractmethod, ABC
-from typing import Optional
+from typing import Optional, Type, Tuple
 
 from syllabiky.syllabiky import split_phrase
 from syllabiky.DbMatcher import DbMatcher
@@ -8,7 +8,7 @@ from src.tools import sk
 from src.tools.exception import WordSegmentException
 from src.tools.overlapable import get_overlapable
 from src.tools.splinter import SlovakGraphicSplinter, SlovakPhoneticSplinter, EnglishGraphicSplinter, \
-    EnglishPhoneticSplinter, Overlap, LexshType, parse_lexsh_type
+    EnglishPhoneticSplinter, Overlap, LexshType, parse_lexsh_type, GraphicSplinter
 from src.tools.corpora import SlovakExactCorpus, SlovakSubstringCorpus, EnglishExactCorpus, EnglishSubstringCorpus
 
 
@@ -183,37 +183,47 @@ class NamingUnit(Entity):
 
     def __lexsh(self):
 
-        cls = SlovakGraphicSplinter if self.__lang == 'SK' else EnglishGraphicSplinter
+        cls: Type[GraphicSplinter] = SlovakGraphicSplinter if self.__lang == 'SK' else EnglishGraphicSplinter
 
         lexsh_main = []
         is_lexsh_modified = False
         lexsh_whatm = []
 
         for i in range(4):
-            sw_graphic = self['sw{}_graphic'.format(i+1)]
-            gs_splinter = self['gs_sw{}_splinter'.format(i+1)]
-            gm_splinter = self['gm_sw{}_splinter'.format(i+1)]
-            if self.__invalid_sw_splinter(sw_graphic, gs_splinter):
+            sw_graphic = self[f'sw{i+1}_graphic']
+            J_gs_splinter = self[f'J_gs_sw{i+1}_splinter']
+            G_gs_splinter = self[f'G_gs_sw{i+1}_splinter']
+            J_gm_splinter = self[f'J_gm_sw{i+1}_splinter']
+            G_gm_splinter = self[f'G_gm_sw{i+1}_splinter']
+            if not sw_graphic or not J_gs_splinter or sw_graphic in ('NA', 'N/A'):
+                # if we don't have source word or splinter, then break
                 break
 
-            strict = cls(self['nu_graphic'], sw_graphic, True)
-            strict.set_splinter(gs_splinter)
-            lexsh = strict.lexical_shortening
+            lexsh_main_item: Optional[Tuple[str, bool]] = None
+            lexsh_whatm_item: Optional[Tuple[str, bool]] = None
+
+            splinter_obj = cls(self['nu_graphic'], sw_graphic, True)
+            _, used_splinter, warning = splinter_obj.set_splinter_preferably(J_gs_splinter, G_gs_splinter)
+            lexsh = splinter_obj.lexical_shortening
+
             if lexsh:
-                lexsh_main.append(lexsh.name)
-
-                if gm_splinter:
-
-                    if gs_splinter == gm_splinter:
-                        # splintre su rovnake => ziadna zmena
-                        lexsh_whatm.append(lexsh_main[-1])
+                lexsh_main_item = (lexsh.name, warning)
+                if J_gm_splinter:
+                    if used_splinter in (J_gm_splinter, G_gm_splinter):
+                        lexsh_whatm_item = lexsh_main_item
                     else:
-                        modified = cls(self['nu_graphic'], sw_graphic, False)
-                        modified.set_splinter(gm_splinter)
-                        lexsh = modified.lexical_shortening
+                        is_lexsh_modified = True
+                        splinter_obj = cls(self['nu_graphic'], sw_graphic, False)
+                        _, _, warning = splinter_obj.set_splinter_preferably(J_gm_splinter, G_gm_splinter)
+                        lexsh = splinter_obj.lexical_shortening
                         if lexsh:
-                            is_lexsh_modified = True
-                            lexsh_whatm.append(lexsh.name + 'm')
+                            lexsh_whatm_item = (f'{lexsh.name}m', warning)
+
+            for lst, item in zip((lexsh_main, lexsh_whatm), (lexsh_main_item, lexsh_whatm_item)):
+                to_append = item[0]
+                if item[1]:
+                    to_append += '_warn'
+                lst.append(to_append)
 
         self['G_lexsh_main'] = '+'.join(lexsh_main)
         if len(lexsh_main) and len(lexsh_main) == len(lexsh_whatm):
@@ -236,13 +246,15 @@ class NamingUnit(Entity):
 
             for i in range(4):
                 source_word = self['sw{}_{}'.format(i + 1, gr_ph)]
-                splinter = self['{}s_sw{}_splinter'.format('g' if graphic else 'p', i + 1)]
-                if not source_word or not splinter:
+                splinter_base_key = '{}s_sw{}_splinter'.format('g' if graphic else 'p', i + 1)
+                J_splinter = self[f'J_{splinter_base_key}']
+                G_splinter = self[f'G_{splinter_base_key}']
+                if not source_word or not J_splinter:
                     break
 
                 try:
                     strict = SplinterCls(naming_unit, source_word, True)
-                    strict.set_splinter(splinter)
+                    strict.set_splinter_preferably(J_splinter, G_splinter)
                 except WordSegmentException as e:
                     # print(e, file=sys.stderr)
                     break
@@ -279,10 +291,13 @@ class NamingUnit(Entity):
 
         if self.__lang == 'SK':
             for N in (1, 2, 3):
+                splinter_base_key = f'gs_sw{N}_splinter'
+                J_splinter = self[f'J_{splinter_base_key}']
+                G_splinter = self[f'G_{splinter_base_key}']
                 res = None
-                if self['nu_graphic'] and self[f'sw{N}_graphic'] and self[f'sw{N}_syllabic'] and self[f'gs_sw{N}_splinter']:
+                if self['nu_graphic'] and self[f'sw{N}_graphic'] and self[f'sw{N}_syllabic'] and J_splinter:
                     s = SlovakGraphicSplinter(self['nu_graphic'], self[f'sw{N}_graphic'], True)
-                    if s.set_splinter(self[f'gs_sw{N}_splinter']):
+                    if s.set_splinter_preferably(J_splinter, G_splinter):
                         lexsh_type = self.__get_lexsh_type(N)
                         if lexsh_type is not None and s.lexical_shortening == lexsh_type:
                             sp = s.get_split_point(self[f'sw{N}_syllabic'])
@@ -292,10 +307,13 @@ class NamingUnit(Entity):
 
         elif self.__lang == 'EN':
             for N in (1, 2, 3):
+                splinter_base_key = f'ps_sw{N}_splinter'
+                J_splinter = self[f'J_{splinter_base_key}']
+                G_splinter = self[f'G_{splinter_base_key}']
                 res = None
-                if self['nu_phonetic'] and self[f'sw{N}_phonetic'] and self[f'ps_sw{N}_splinter']:
+                if self['nu_phonetic'] and self[f'sw{N}_phonetic'] and J_splinter:
                     s = EnglishPhoneticSplinter(self['nu_phonetic'], self[f'sw{N}_phonetic'], True)
-                    if s.set_splinter(self[f'ps_sw{N}_splinter']):
+                    if s.set_splinter_preferably(J_splinter, G_splinter):
                         lexsh_type = self.__get_lexsh_type(N)
                         if lexsh_type is not None and s.lexical_shortening == lexsh_type:
                             sp = s.get_split_point(self[f'sw{N}_phonetic'])
