@@ -310,9 +310,9 @@ class SlovakGraphicSplinter(GraphicSplinter):
 
 class SlovakPhoneticSplinter(PhoneticSplinter):
 
+    # noinspection PyUnusedLocal
     def __init__(self, namingunit: str, sourceword: str, strict: bool, **kwargs):
-        self.__nu_src_lang_sk = kwargs['nu_src_lang_sk']
-        super().__init__(namingunit, sourceword, strict, lambda word: sk.get_phones_list(word, self.__nu_src_lang_sk))
+        super().__init__(namingunit, sourceword, strict, sk.get_phones_list)
 
     @staticmethod
     def modify(expr: str) -> str:

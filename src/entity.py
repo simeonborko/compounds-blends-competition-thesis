@@ -90,7 +90,7 @@ class SourceWord(Entity):
         if self['sw_phonetic']:
             try:
                 if self.__lang == 'SK':
-                    newval = sk.count_phones(self['sw_phonetic'], self.__src_lang_sk)
+                    newval = sk.count_phones(self['sw_phonetic'])
                 elif self.__lang == 'EN':
                     newval = en.count_phones(self['sw_phonetic'])
             except WordSegmentException:
@@ -158,7 +158,7 @@ class NamingUnit(Entity):
         if self['nu_phonetic']:
             try:
                 if self.__lang == 'SK':
-                    newval = sk.count_phones(self['nu_phonetic'], self.__nu_src_lang_sk)
+                    newval = sk.count_phones(self['nu_phonetic'])
                 elif self.__lang == 'EN':
                     newval = en.count_phones(self['nu_phonetic'])
             except WordSegmentException:
@@ -323,13 +323,12 @@ class NamingUnit(Entity):
                                 res = str(sp)
                 self[f'G_split_point_{N}'] = res
 
-    def __get_phones_list(self, source_word: str, sw_number: int):
-        if self.__lang == 'SK':
-            return sk.get_phones_list(source_word, self.__sw_src_lang_sk[sw_number])
-        else:
-            return en.get_phones_list(source_word)
-
     def __overlapable(self):
+
+        if self.__lang == 'SK':
+            get_phones_list = sk.get_phones_list
+        else:
+            get_phones_list = en.get_phones_list
 
         if self['sw1_phonetic'] != 'NA' and self['sw2_phonetic'] != 'NA' \
                 and self['sw3_phonetic'] == 'NA' and self['sw4_phonetic'] == 'NA':
@@ -343,8 +342,8 @@ class NamingUnit(Entity):
                 return
                 
             try:
-                sw1 = self.__get_phones_list(sw1, 1)
-                sw2 = self.__get_phones_list(sw2, 2)
+                sw1 = get_phones_list(sw1)
+                sw2 = get_phones_list(sw2)
             except WordSegmentException:
                 self['G_overlapable'] = "ERROR BAD PHONETIC"
                 self['G_overlapable_length'] = None

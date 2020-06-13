@@ -1,10 +1,11 @@
+import sys
 from typing import Optional, List
 
 import itertools
 
 from src.tools.exception import WordSegmentException
 from src.tools.redundant import REDUNDANT
-from .phones import PHONES_PATTERN, PHONES_PATTERN_EXCLUDING_DZDZ
+from .phones import PHONES_PATTERN
 
 
 def replace_i(word):
@@ -72,12 +73,14 @@ def get_map_letter_to_syll(syllabic_form: str, chdzdz: bool) -> List[int]:
 
 
 def __find_phones(word, dzdz) -> Optional[List[str]]:
-    pattern = PHONES_PATTERN if dzdz else PHONES_PATTERN_EXCLUDING_DZDZ
+    if not dzdz:
+        print('(warning) __find_phones: dzdz is False but it is ignored', file=sys.stderr)
+    pattern = PHONES_PATTERN
     phones = pattern.findall(word)
     return phones if sum(len(phone) for phone in phones) == len(word) else None
 
 
-def get_phones_list(word, dzdz, rep_i=True) -> List[str]:
+def get_phones_list(word, dzdz=True, rep_i=True) -> List[str]:
     """Ziska zoznam fonem"""
 
     if rep_i:
@@ -95,6 +98,6 @@ def get_phones_list(word, dzdz, rep_i=True) -> List[str]:
     raise WordSegmentException(word, phones)
 
 
-def count_phones(word, dzdz, rep_i=True):
+def count_phones(word, dzdz=True, rep_i=True):
     """Count phones in word in phonetic transcription."""
     return len(get_phones_list(word, dzdz, rep_i))
