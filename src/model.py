@@ -773,12 +773,6 @@ class NamingUnitTable(Table):
 
     _GENERATE_SELECT_ALL = """SELECT
     NU.*,
-    
-    SW1.source_language AS sw1_source_language,
-    SW2.source_language AS sw2_source_language,
-    SW3.source_language AS sw3_source_language,
-    SW4.source_language AS sw4_source_language,
-    
     GS.J_sw1_splinter AS J_gs_sw1_splinter,
     GS.G_sw1_splinter AS G_gs_sw1_splinter,
     GS.J_sw2_splinter AS J_gs_sw2_splinter,
@@ -1074,11 +1068,7 @@ SELECT
   NU.sw4_graphic,
   NU.wf_process,
   NU.nu_number_of_SWs,
-  
-  SW1.source_language AS sw1_source_language,
-  SW2.source_language AS sw2_source_language,
-  SW3.source_language AS sw3_source_language,
-  SW4.source_language AS sw4_source_language,
+  NU.nu_source_language,
   
   SW1.sw_phonetic sw1_phonetic,
   SW2.sw_phonetic sw2_phonetic,
