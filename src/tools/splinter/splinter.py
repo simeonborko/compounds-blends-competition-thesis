@@ -50,6 +50,7 @@ class SplitPointType(Enum):
 
 
 class Alignment:
+    """Zarovnanie naming unit so source word. Vkladanie medzier do zarovnania nie je implementovane."""
 
     def __init__(self, nu: Sequence, sw: Sequence, nu_range: range, sw_range: range, nu_orig: Sequence):
         self._nu = nu
@@ -136,12 +137,20 @@ class Splinter:
 
         return aligns
 
-    def find_splinter(self) -> bool:
+    def find_splinter(self, sw_first=False, sw_last=False) -> bool:
         if self.__alignment is not None:
             raise Exception
         aligns = self.__all_alignments()
         if len(aligns) > 0:
-            alignment = max(aligns, key=lambda align: align.score)
+            alignment = None
+            if sw_first:
+                # if finding splinter for the first source word, use a splinter at the start of the naming unit
+                alignment = next((a for a in aligns if a.nu_range.start == 0), None)
+            elif sw_last:
+                # if finding splinter for the last source word, use a splinter at the end of the naming unit
+                alignment = next((a for a in aligns if a.nu_range.stop == a.nu_length), None)
+            if alignment is None:
+                alignment = max(aligns, key=lambda align: align.score)
             if alignment.score > 0:
                 self.__alignment = alignment
                 return True

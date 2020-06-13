@@ -414,6 +414,11 @@ class Splinter(Entity):
             elif phonetic:
                 cls = EnglishPhoneticSplinter
 
+        try:
+            number_of_SWs = int(self['nu_number_of_SWs'])
+        except ValueError:
+            number_of_SWs = 2
+
         strict = None
         if self['type_of_splinter'].endswith('strict'):
             strict = True
@@ -433,7 +438,7 @@ class Splinter(Entity):
 
                     try:
                         s = cls(nu, sw, strict)
-                        if s.find_splinter():
+                        if s.find_splinter(sw_first=(i == 1), sw_last=(i == number_of_SWs)):
                             splinter = s.splinter
                             length = s.length
                     except WordSegmentException:
