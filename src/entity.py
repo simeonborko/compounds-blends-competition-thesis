@@ -1,5 +1,5 @@
 from abc import abstractmethod, ABC
-from typing import Optional, Type, Tuple
+from typing import Optional, Type, Tuple, Union
 
 from syllabiky.syllabiky import split_phrase
 from syllabiky.DbMatcher import DbMatcher
@@ -61,6 +61,7 @@ class SourceWord(Entity):
     def __init__(self, table, data: dict):
         super().__init__(table, data)
         self.__lang = self['survey_language']
+        self.__src_lang_sk = self['source_language'] != 'EN'
 
     def __sw_phonetic(self):
         if self.TRANSCRIPTION_MANAGER is not None:
@@ -69,17 +70,18 @@ class SourceWord(Entity):
     def __sw_syllabic(self):
         if self.__lang == 'SK':
             newval = None
-            try:
-                newval = split_phrase(self['sw_graphic'], self.__MATCHER)
-            except TypeError:
-                print("TypeError split_phrase:", self['sw_graphic'])
+            if self.__src_lang_sk:
+                try:
+                    newval = split_phrase(self['sw_graphic'], self.__MATCHER)
+                except TypeError:
+                    print("TypeError split_phrase:", self['sw_graphic'])
         else:
             newval = 'NA'
         self['G_sw_syllabic'] = newval
 
     def __sw_graphic_len(self):
         if self.__lang == 'SK':
-            self['G_sw_graphic_len'] = sk.count_letters(self['sw_graphic'])
+            self['G_sw_graphic_len'] = sk.count_letters(self['sw_graphic'], self.__src_lang_sk)
         elif self.__lang == 'EN':
             self['G_sw_graphic_len'] = en.count_letters(self['sw_graphic'])
 
@@ -88,7 +90,7 @@ class SourceWord(Entity):
         if self['sw_phonetic']:
             try:
                 if self.__lang == 'SK':
-                    newval = sk.count_phones(self['sw_phonetic'])
+                    newval = sk.count_phones(self['sw_phonetic'], self.__src_lang_sk)
                 elif self.__lang == 'EN':
                     newval = en.count_phones(self['sw_phonetic'])
             except WordSegmentException:
@@ -131,6 +133,8 @@ class NamingUnit(Entity):
         self.__lang = self['survey_language']
         if self.__lang not in ('SK', 'EN'):
             raise Exception
+        self.__nu_src_lang_sk = _is_slovak(self['nu_source_language'])
+        self.__sw_src_lang_sk = _sw_src_lang_dict(self)
 
     def __nu_syllabic(self):
         if self.__lang == 'SK':
@@ -145,7 +149,7 @@ class NamingUnit(Entity):
 
     def __nu_graphic_len(self):
         if self.__lang == 'SK':
-            self['G_nu_graphic_len'] = sk.count_letters(self['nu_graphic'])
+            self['G_nu_graphic_len'] = sk.count_letters(self['nu_graphic'], self.__nu_src_lang_sk)
         elif self.__lang == 'EN':
             self['G_nu_graphic_len'] = en.count_letters(self['nu_graphic'])
 
@@ -154,7 +158,7 @@ class NamingUnit(Entity):
         if self['nu_phonetic']:
             try:
                 if self.__lang == 'SK':
-                    newval = sk.count_phones(self['nu_phonetic'])
+                    newval = sk.count_phones(self['nu_phonetic'], self.__nu_src_lang_sk)
                 elif self.__lang == 'EN':
                     newval = en.count_phones(self['nu_phonetic'])
             except WordSegmentException:
@@ -175,11 +179,8 @@ class NamingUnit(Entity):
         elif self.__lang == 'EN' and self.CORPUS_EN is not None:
             self['G_nu_corpus_frequency'] = self.CORPUS_EN.get_frequency(self['nu_graphic'])
 
-    @staticmethod
-    def __invalid_sw_splinter(source_word, splinter) -> bool:
-        return not source_word or not splinter \
-               or source_word in ('NA', 'N/A') \
-               or splinter in ('NA', 'N/A')
+    def __splinter_kwargs(self, sw_number: int) -> dict:
+        return {'nu_src_lang_sk': self.__sw_src_lang_sk[sw_number]}
 
     def __lexsh(self):
 
@@ -202,7 +203,7 @@ class NamingUnit(Entity):
             lexsh_main_item: Optional[Tuple[str, bool]] = None
             lexsh_whatm_item: Optional[Tuple[str, bool]] = None
 
-            splinter_obj = cls(self['nu_graphic'], sw_graphic, True)
+            splinter_obj = cls(self['nu_graphic'], sw_graphic, True, **self.__splinter_kwargs(i+1))
             _, used_splinter, warning = splinter_obj.set_splinter_preferably(J_gs_splinter, G_gs_splinter)
             lexsh = splinter_obj.lexical_shortening
 
@@ -213,7 +214,7 @@ class NamingUnit(Entity):
                         lexsh_whatm_item = lexsh_main_item
                     else:
                         is_lexsh_modified = True
-                        splinter_obj = cls(self['nu_graphic'], sw_graphic, False)
+                        splinter_obj = cls(self['nu_graphic'], sw_graphic, False, **self.__splinter_kwargs(i+1))
                         _, _, warning = splinter_obj.set_splinter_preferably(J_gm_splinter, G_gm_splinter)
                         lexsh = splinter_obj.lexical_shortening
                         if lexsh:
@@ -252,8 +253,9 @@ class NamingUnit(Entity):
                 if not source_word or not J_splinter:
                     break
 
+                # noinspection PyUnusedLocal
                 try:
-                    strict = SplinterCls(naming_unit, source_word, True)
+                    strict = SplinterCls(naming_unit, source_word, True, **self.__splinter_kwargs(i+1))
                     strict.set_splinter_preferably(J_splinter, G_splinter)
                 except WordSegmentException as e:
                     # print(e, file=sys.stderr)
@@ -296,7 +298,7 @@ class NamingUnit(Entity):
                 G_splinter = self[f'G_{splinter_base_key}']
                 res = None
                 if self['nu_graphic'] and self[f'sw{N}_graphic'] and self[f'sw{N}_syllabic'] and J_splinter:
-                    s = SlovakGraphicSplinter(self['nu_graphic'], self[f'sw{N}_graphic'], True)
+                    s = SlovakGraphicSplinter(self['nu_graphic'], self[f'sw{N}_graphic'], True, **self.__splinter_kwargs(N))
                     if s.set_splinter_preferably(J_splinter, G_splinter):
                         lexsh_type = self.__get_lexsh_type(N)
                         if lexsh_type is not None and s.lexical_shortening == lexsh_type:
@@ -312,7 +314,7 @@ class NamingUnit(Entity):
                 G_splinter = self[f'G_{splinter_base_key}']
                 res = None
                 if self['nu_phonetic'] and self[f'sw{N}_phonetic'] and J_splinter:
-                    s = EnglishPhoneticSplinter(self['nu_phonetic'], self[f'sw{N}_phonetic'], True)
+                    s = EnglishPhoneticSplinter(self['nu_phonetic'], self[f'sw{N}_phonetic'], True, **self.__splinter_kwargs(N))
                     if s.set_splinter_preferably(J_splinter, G_splinter):
                         lexsh_type = self.__get_lexsh_type(N)
                         if lexsh_type is not None and s.lexical_shortening == lexsh_type:
@@ -321,14 +323,13 @@ class NamingUnit(Entity):
                                 res = str(sp)
                 self[f'G_split_point_{N}'] = res
 
-    def __overlapable(self):
-
+    def __get_phones_list(self, source_word: str, sw_number: int):
         if self.__lang == 'SK':
-            get_phones_list = sk.get_phones_list
-        elif self.__lang == 'EN':
-            get_phones_list = en.get_phones_list
+            return sk.get_phones_list(source_word, self.__sw_src_lang_sk[sw_number])
         else:
-            raise Exception('No language')
+            return en.get_phones_list(source_word)
+
+    def __overlapable(self):
 
         if self['sw1_phonetic'] != 'NA' and self['sw2_phonetic'] != 'NA' \
                 and self['sw3_phonetic'] == 'NA' and self['sw4_phonetic'] == 'NA':
@@ -342,8 +343,8 @@ class NamingUnit(Entity):
                 return
                 
             try:
-                sw1 = get_phones_list(sw1)
-                sw2 = get_phones_list(sw2)
+                sw1 = self.__get_phones_list(sw1, 1)
+                sw2 = self.__get_phones_list(sw2, 2)
             except WordSegmentException:
                 self['G_overlapable'] = "ERROR BAD PHONETIC"
                 self['G_overlapable_length'] = None
@@ -383,6 +384,10 @@ class Splinter(Entity):
     SK_SUBSTRING_CORPUS: Optional[SlovakSubstringCorpus] = None
     EN_EXACT_CORPUS: Optional[EnglishExactCorpus] = None
     EN_SUBSTRING_CORPUS: Optional[EnglishSubstringCorpus] = None
+
+    def __init__(self, table, data: dict):
+        super().__init__(table, data)
+        self.__sw_src_lang_sk = _sw_src_lang_dict(self)
 
     def corpus_freq(self):
 
@@ -455,7 +460,7 @@ class Splinter(Entity):
                     length = None
 
                     try:
-                        s = cls(nu, sw, strict)
+                        s = cls(nu, sw, strict, nu_src_lang_sk=self.__sw_src_lang_sk[i])
                         if s.find_splinter(sw_first=(i == 1), sw_last=(i == number_of_SWs)):
                             splinter = s.splinter
                             length = s.length
@@ -466,3 +471,14 @@ class Splinter(Entity):
                     self['G_sw{}_splinter_len'.format(i)] = length
 
         self.corpus_freq()
+
+
+def _is_slovak(src_lang):
+    return not src_lang or 'SK' in src_lang or 'EN' not in src_lang
+
+
+def _sw_src_lang_dict(obj: Union[NamingUnit, Splinter]):
+    return {
+        i+1: _is_slovak(obj[f'sw{i + 1}_source_language'])
+        for i in range(4)
+    }

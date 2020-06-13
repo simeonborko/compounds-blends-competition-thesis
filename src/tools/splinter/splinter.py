@@ -251,8 +251,9 @@ class PhoneticSplinter(StringSplinter, metaclass=ABCMeta):
 
 class SlovakGraphicSplinter(GraphicSplinter):
 
-    def __init__(self, namingunit: str, sourceword: str, strict: bool):
-        super().__init__(namingunit, sourceword, strict, sk.get_letters_list)
+    def __init__(self, namingunit: str, sourceword: str, strict: bool, **kwargs):
+        self.__nu_src_lang_sk = kwargs['nu_src_lang_sk']
+        super().__init__(namingunit, sourceword, strict, lambda word: sk.get_letters_list(word, self.__nu_src_lang_sk))
 
     @staticmethod
     def modify(expr: str) -> str:
@@ -292,7 +293,7 @@ class SlovakGraphicSplinter(GraphicSplinter):
 
         # chyz-ka => 0 0 0 1 1
         # sla-bi-ky => 0 0 0 1 1 2 2
-        map_letter_to_syll = sk.get_map_letter_to_syll(sw_syllabic)
+        map_letter_to_syll = sk.get_map_letter_to_syll(sw_syllabic, self.__nu_src_lang_sk)
 
         lexsh = self.lexical_shortening
         rng = self.alignment.sw_range
@@ -309,8 +310,9 @@ class SlovakGraphicSplinter(GraphicSplinter):
 
 class SlovakPhoneticSplinter(PhoneticSplinter):
 
-    def __init__(self, namingunit: str, sourceword: str, strict: bool):
-        super().__init__(namingunit, sourceword, strict, sk.get_phones_list)
+    def __init__(self, namingunit: str, sourceword: str, strict: bool, **kwargs):
+        self.__nu_src_lang_sk = kwargs['nu_src_lang_sk']
+        super().__init__(namingunit, sourceword, strict, lambda word: sk.get_phones_list(word, self.__nu_src_lang_sk))
 
     @staticmethod
     def modify(expr: str) -> str:
@@ -319,7 +321,8 @@ class SlovakPhoneticSplinter(PhoneticSplinter):
 
 class EnglishGraphicSplinter(GraphicSplinter):
 
-    def __init__(self, namingunit: str, sourceword: str, strict: bool):
+    # noinspection PyUnusedLocal
+    def __init__(self, namingunit: str, sourceword: str, strict: bool, **kwargs):
         super().__init__(namingunit, sourceword, strict, en.get_letters_list)
 
     @staticmethod
@@ -329,7 +332,8 @@ class EnglishGraphicSplinter(GraphicSplinter):
 
 class EnglishPhoneticSplinter(PhoneticSplinter):
 
-    def __init__(self, namingunit: str, sourceword: str, strict: bool):
+    # noinspection PyUnusedLocal
+    def __init__(self, namingunit: str, sourceword: str, strict: bool, **kwargs):
         super().__init__(namingunit, sourceword, strict, en.get_phones_list)
 
     @staticmethod

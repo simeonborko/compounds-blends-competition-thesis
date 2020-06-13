@@ -773,6 +773,12 @@ class NamingUnitTable(Table):
 
     _GENERATE_SELECT_ALL = """SELECT
     NU.*,
+    
+    SW1.source_language AS sw1_source_language,
+    SW2.source_language AS sw2_source_language,
+    SW3.source_language AS sw3_source_language,
+    SW4.source_language AS sw4_source_language,
+    
     GS.J_sw1_splinter AS J_gs_sw1_splinter,
     GS.G_sw1_splinter AS G_gs_sw1_splinter,
     GS.J_sw2_splinter AS J_gs_sw2_splinter,
@@ -1059,8 +1065,25 @@ class SplinterTable(Table):
 
     _GENERATE_SELECT_ALL = """
 SELECT
-  SPL.*, NU.nu_phonetic, NU.sw1_graphic, NU.sw2_graphic, NU.sw3_graphic, NU.sw4_graphic, NU.wf_process, NU.nu_number_of_SWs,
-  SW1.sw_phonetic sw1_phonetic, SW2.sw_phonetic sw2_phonetic, SW3.sw_phonetic sw3_phonetic, SW4.sw_phonetic sw4_phonetic
+  SPL.*,
+  
+  NU.nu_phonetic,
+  NU.sw1_graphic,
+  NU.sw2_graphic,
+  NU.sw3_graphic,
+  NU.sw4_graphic,
+  NU.wf_process,
+  NU.nu_number_of_SWs,
+  
+  SW1.source_language AS sw1_source_language,
+  SW2.source_language AS sw2_source_language,
+  SW3.source_language AS sw3_source_language,
+  SW4.source_language AS sw4_source_language,
+  
+  SW1.sw_phonetic sw1_phonetic,
+  SW2.sw_phonetic sw2_phonetic,
+  SW3.sw_phonetic sw3_phonetic,
+  SW4.sw_phonetic sw4_phonetic
 FROM splinter SPL
   LEFT JOIN naming_unit NU
     ON NU.nu_graphic=SPL.nu_graphic AND NU.first_language=SPL.first_language AND
