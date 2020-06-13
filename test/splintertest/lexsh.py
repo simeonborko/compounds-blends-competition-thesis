@@ -23,7 +23,7 @@ class LexshTest(TestCase):
         self.__test('0123', '123', LexshType.LS)
 
     def test_4(self):
-        self.__test('01234', '123', None)
+        self.__test('01234', '123', LexshType.RSLS)
 
     def test_5(self):
         self.__test('1', '1', LexshType.FSW)

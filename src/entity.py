@@ -175,6 +175,12 @@ class NamingUnit(Entity):
         elif self.__lang == 'EN' and self.CORPUS_EN is not None:
             self['G_nu_corpus_frequency'] = self.CORPUS_EN.get_frequency(self['nu_graphic'])
 
+    @staticmethod
+    def __invalid_sw_splinter(source_word, splinter) -> bool:
+        return not source_word or not splinter \
+               or source_word in ('NA', 'N/A') \
+               or splinter in ('NA', 'N/A')
+
     def __lexsh(self):
 
         cls = SlovakGraphicSplinter if self.__lang == 'SK' else EnglishGraphicSplinter
@@ -187,7 +193,7 @@ class NamingUnit(Entity):
             sw_graphic = self['sw{}_graphic'.format(i+1)]
             gs_splinter = self['gs_sw{}_splinter'.format(i+1)]
             gm_splinter = self['gm_sw{}_splinter'.format(i+1)]
-            if not sw_graphic or not gs_splinter:
+            if self.__invalid_sw_splinter(sw_graphic, gs_splinter):
                 break
 
             strict = cls(self['nu_graphic'], sw_graphic, True)
