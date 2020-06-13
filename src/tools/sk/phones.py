@@ -1,33 +1,31 @@
 import re
 
-phones = (
-    'I_\^U\\\\',
-    'I_\^a',
-    'I_\^E',
-    'U_\^O',
-    'U_\^',
-    'I_\^',
-    'r\=\:',
-    'l\=\:',
-    'a\:',
-    'E\:',
-    'I\:',
-    'O\:',
-    'U\:',
+phones_excluding_dzdz = (
+    'I_\\^U\\\\',
+    'I_\\^a',
+    'I_\\^E',
+    'U_\\^O',
+    'U_\\^',
+    'I_\\^',
+    'r\\=\\:',
+    'l\\=\\:',
+    'a\\:',
+    'E\\:',
+    'I\\:',
+    'O\\:',
+    'U\\:',
     'J\\\\',
     'ts',
-    'dz',
     'tS',
-    'dZ',
     'h\\\\',
-    'r\=',
-    'l\=',
+    'r\\=',
+    'l\\=',
     'a',
     'E',
     'I',
     'O',
     'U',
-    '\{',
+    '\\{',
     'p',
     'b',
     't',
@@ -54,5 +52,12 @@ phones = (
     'N',
     'J'
 )
+
+PHONES_PATTERN_EXCLUDING_DZDZ = re.compile('|'.join(phones_excluding_dzdz))
+
+phones = (
+    'dz',
+    'dZ',
+) + phones_excluding_dzdz
 
 PHONES_PATTERN = re.compile('|'.join(phones))
