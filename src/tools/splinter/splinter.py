@@ -148,6 +148,7 @@ class Splinter:
         return False
 
     def set_splinter(self, splinter: Sequence) -> bool:
+        """Set splinter when computing splinter-derived columns"""
         if self.__alignment is not None:
             raise Exception
         self.__alignment = next(filter(lambda align: align.splinter == splinter, self.__all_alignments()), None)
@@ -207,7 +208,7 @@ class GraphicSplinter(StringSplinter, metaclass=ABCMeta):
         super().__init__(namingunit.lower(), sourceword.lower(), strict, list_fn)
 
     def set_splinter(self, splinter: str) -> bool:
-        return super().set_splinter(self._list_fn(splinter))
+        return super().set_splinter(self._list_fn(splinter.lower()))
 
     @property
     def splinter(self) -> Optional[str]:

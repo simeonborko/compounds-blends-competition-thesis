@@ -50,5 +50,11 @@ class SetSplinter(TestCase):
         self.assertEqual('bock', s.splinter)
         self.assertEqual(4, s.length)
 
+    def test_4(self):
+        s = EnglishGraphicSplinter('Pianch', 'piano', True)
+        self.assertTrue(s.set_splinter('Pian'))
+        self.assertEqual('pian', s.splinter)
+        self.assertEqual(4, s.length)
+
 
 

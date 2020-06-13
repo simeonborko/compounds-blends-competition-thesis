@@ -4,7 +4,6 @@ from unittest import TestCase
 from src.tools.splinter import SlovakGraphicSplinter, LexshType
 
 
-
 class LexshTest(TestCase):
 
     def __test(self, sw: str, splinter: str, expected: Optional[LexshType]):

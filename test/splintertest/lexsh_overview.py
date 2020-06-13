@@ -17,3 +17,7 @@ class LexshTestOverview(TestCase):
     def test_rs_ls(self):
         self.__en('elifly', 'elephant', LexshType.RS)
         self.__en('elifly', 'butterfly', LexshType.LS)
+
+    def test_rs_ls_upcase(self):
+        self.__en('Elifly', 'elephant', LexshType.RS)
+        self.__en('Elifly', 'butterfly', LexshType.LS)
