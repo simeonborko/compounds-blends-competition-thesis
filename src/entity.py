@@ -452,9 +452,9 @@ class Splinter(Entity):
         if nu:
             for i in range(1, 4+1):
                 sw = self['sw{}_graphic'.format(i)] if graphic else self['sw{}_phonetic'.format(i)]
-                if sw:
-                    splinter = ''
-                    length = None
+                splinter = ''
+                length = None
+                if sw and sw not in ('NA', 'N/A'):
 
                     try:
                         s = cls(nu, sw, strict, nu_src_lang_sk=self.__nu_src_lang_sk)
@@ -464,8 +464,8 @@ class Splinter(Entity):
                     except WordSegmentException:
                         pass
 
-                    self['G_sw{}_splinter'.format(i)] = splinter
-                    self['G_sw{}_splinter_len'.format(i)] = length
+                self['G_sw{}_splinter'.format(i)] = splinter
+                self['G_sw{}_splinter_len'.format(i)] = length
 
         self.corpus_freq()
 
