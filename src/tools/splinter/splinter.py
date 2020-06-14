@@ -142,15 +142,14 @@ class Splinter:
             raise Exception
         aligns = self.__all_alignments()
         if len(aligns) > 0:
-            alignment = None
+            filtered_aligns: Optional[list] = None
             if sw_first:
                 # if finding splinter for the first source word, use a splinter at the start of the naming unit
-                alignment = next((a for a in aligns if a.nu_range.start == 0), None)
+                filtered_aligns = [a for a in aligns if a.nu_range.start == 0]
             elif sw_last:
                 # if finding splinter for the last source word, use a splinter at the end of the naming unit
-                alignment = next((a for a in aligns if a.nu_range.stop == a.nu_length), None)
-            if alignment is None:
-                alignment = max(aligns, key=lambda align: align.score)
+                filtered_aligns = [a for a in aligns if a.nu_range.stop == a.nu_length]
+            alignment = max(filtered_aligns if filtered_aligns else aligns, key=lambda align: align.score)
             if alignment.score > 0:
                 self.__alignment = alignment
                 return True
